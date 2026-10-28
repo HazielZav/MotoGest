@@ -1,12 +1,12 @@
 package com.TallerJC.motogest.ui
 
-
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -14,6 +14,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import com.TallerJC.motogest.ui.gerencia.GerenciaViewModel
+import com.TallerJC.motogest.ui.gerencia.PantallaGerencia
 import com.TallerJC.motogest.ui.navigation.Ruta
 import com.TallerJC.motogest.ui.recepcion.PantallaRecepcion
 import com.TallerJC.motogest.ui.recepcion.RecepcionViewModel
@@ -36,7 +38,7 @@ fun MotoGestApp(
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurface
             ) {
-                // La ruta acutal es pintada de naraja
+                // La ruta acutal es pintada de naranja
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val rutaActual = navBackStackEntry?.destination?.route
 
@@ -47,7 +49,6 @@ fun MotoGestApp(
                         selected = rutaActual == destino.ruta,
                         onClick = {
                             navController.navigate(destino.ruta) {
-
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
                                 }
@@ -103,7 +104,20 @@ fun MotoGestApp(
 
             // --- GERENCIA ---
             composable(Ruta.Gerencia.ruta) {
-                Text(text = "Pantalla de Gerencia", color = MaterialTheme.colorScheme.onBackground)
+                val viewModel: GerenciaViewModel = viewModel()
+                val estadoUi by viewModel.estadoUi.collectAsStateWithLifecycle()
+
+                PantallaGerencia(
+                    estadoUi = estadoUi,
+                    onPeriodoSeleccionado = { viewModel.cambiarPeriodo(it) },
+                    onExcluirRefaccionesToggle = { viewModel.toggleExcluirRefacciones() },
+                    onBuscarCambio = { viewModel.actualizarBusqueda(it) },
+                    onRangoPersonalizadoSeleccionado = { inicio, fin ->
+                        viewModel.establecerRangoPersonalizado(inicio, fin)
+                    },
+                    onCerrarDialogoFecha = { viewModel.cerrarDialogoFecha() },
+                    onReintentar = { viewModel.cargarDatos() }
+                )
             }
         }
     }
