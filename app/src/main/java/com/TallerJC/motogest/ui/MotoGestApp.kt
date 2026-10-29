@@ -30,6 +30,10 @@ import com.TallerJC.motogest.ui.taller.TallerViewModel
 fun MotoGestApp(
     navController: NavHostController = rememberNavController()
 ) {
+    val context = LocalContext.current
+    val database = remember { AppDatabase.getDatabase(context) }
+    val operacionesRepository = remember { OperacionesRepository(database.workOrderDao()) }
+
     // Lista de pantallas para el menú inferior
     val itemsNavegacion = listOf(
         Ruta.Recepcion,
@@ -82,28 +86,18 @@ fun MotoGestApp(
 
             // --- RECEPCIÓN ---
             composable(Ruta.Recepcion.ruta) {
-                val viewModel: RecepcionViewModel = viewModel()
-                val estadoUi by viewModel.estadoUi.collectAsState()
-
-                PantallaRecepcion(
-                    estadoUi = estadoUi,
-                    onNombreCambio = { viewModel.actualizarNombreCliente(it) },
-                    onTelefonoCambio = { viewModel.actualizarTelefonoCliente(it) },
-                    onMarcaCambio = { viewModel.actualizarMarcaMoto(it) },
-                    onModeloCambio = { viewModel.actualizarModeloColorMoto(it) },
-                    onServicioSeleccionado = { viewModel.seleccionarServicio(it) },
-                    onNotasCambio = { viewModel.actualizarNotasFalla(it) },
-                    onModalidadCambio = { viewModel.cambiarModalidadEntrega(it) },
-                    onGuardarClic = { viewModel.guardarOrden() }
+                val recepcionViewModel: RecepcionViewModel = viewModel(
+                    factory = RecepcionViewModel.provideFactory(operacionesRepository)
                 )
+                PantallaRecepcion(viewModel = recepcionViewModel)
             }
 
             // --- TALLER ---
             composable(Ruta.Taller.ruta) {
                 //Text(text = "Pantalla del Taller", color = MaterialTheme.colorScheme.onBackground)
-                val context = LocalContext.current
-                val database = remember { AppDatabase.getDatabase(context) }
-                val operacionesRepository = remember { OperacionesRepository(database.workOrderDao()) }
+//                val context = LocalContext.current
+//                val database = remember { AppDatabase.getDatabase(context) }
+//                val operacionesRepository = remember { OperacionesRepository(database.workOrderDao()) }
 
                 val tallerViewModel: TallerViewModel = viewModel(
                     factory = TallerViewModel.provideFactory(operacionesRepository)
