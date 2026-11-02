@@ -3,11 +3,11 @@ package com.TallerJC.motogest.ui
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -16,8 +16,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import com.TallerJC.motogest.data.local.AppDatabase
-import com.TallerJC.motogest.data.repository.OperacionesRepository
+import com.TallerJC.motogest.MotoGestApplication
+import com.TallerJC.motogest.data.di.AppContainer
 import com.TallerJC.motogest.ui.entregas.EntregasViewModel
 import com.TallerJC.motogest.ui.entregas.PantallaEntregas
 import com.TallerJC.motogest.ui.gerencia.GerenciaViewModel
@@ -30,11 +30,11 @@ import com.TallerJC.motogest.ui.taller.TallerViewModel
 
 @Composable
 fun MotoGestApp(
+    appContainer: AppContainer = (LocalContext.current.applicationContext as MotoGestApplication).container,
     navController: NavHostController = rememberNavController()
 ) {
-    val context = LocalContext.current
-    val database = remember { AppDatabase.getDatabase(context) }
-    val operacionesRepository = remember { OperacionesRepository(database.workOrderDao()) }
+    val operacionesRepository = appContainer.operacionesRepository
+    val gerenciaRepository = appContainer.gerenciaRepository
 
     // Lista de pantallas para el menú inferior
     val itemsNavegacion = listOf(
@@ -50,14 +50,13 @@ fun MotoGestApp(
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurface
             ) {
-                // La ruta actual es pintada de naranja
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val rutaActual = navBackStackEntry?.destination?.route
 
                 itemsNavegacion.forEach { destino ->
                     NavigationBarItem(
-                        icon = { Icon(destino.icono, contentDescription = destino.titulo) },
-                        label = { Text(destino.titulo) },
+                        icon = { Icon(destino.icono, contentDescription = stringResource(destino.tituloRes)) },
+                        label = { Text(stringResource(destino.tituloRes)) },
                         selected = rutaActual == destino.ruta,
                         onClick = {
                             navController.navigate(destino.ruta) {
@@ -65,21 +64,19 @@ fun MotoGestApp(
                                     saveState = true
                                 }
                                 launchSingleTop = true
-                                // Restaura el estado de la pantalla si ya la habías visitado
                                 restoreState = true
                             }
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onPrimary, // Icono Blanco
-                            selectedTextColor = MaterialTheme.colorScheme.primary, // Texto Naranja
-                            indicatorColor = MaterialTheme.colorScheme.primary // Píldora Naranja de selección
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primary
                         )
                     )
                 }
             }
         }
     ) { paddingValues ->
-        // Aquí conectamos el menú con las pantallas reales
         NavHost(
             navController = navController,
             startDestination = Ruta.Recepcion.ruta,
@@ -113,20 +110,10 @@ fun MotoGestApp(
 
             // --- GERENCIA ---
             composable(Ruta.Gerencia.ruta) {
-                val viewModel: GerenciaViewModel = viewModel()
-                val estadoUi by viewModel.estadoUi.collectAsStateWithLifecycle()
-
-                PantallaGerencia(
-                    estadoUi = estadoUi,
-                    onPeriodoSeleccionado = { viewModel.cambiarPeriodo(it) },
-                    onExcluirRefaccionesToggle = { viewModel.toggleExcluirRefacciones() },
-                    onBuscarCambio = { viewModel.actualizarBusqueda(it) },
-                    onRangoPersonalizadoSeleccionado = { inicio, fin ->
-                        viewModel.establecerRangoPersonalizado(inicio, fin)
-                    },
-                    onCerrarDialogoFecha = { viewModel.cerrarDialogoFecha() },
-                    onReintentar = { viewModel.cargarDatos() }
+                val gerenciaViewModel: GerenciaViewModel = viewModel(
+                    factory = GerenciaViewModel.provideFactory(gerenciaRepository)
                 )
+                PantallaGerencia(viewModel = gerenciaViewModel)
             }
         }
     }

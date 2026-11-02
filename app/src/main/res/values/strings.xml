@@ -1,3 +1,208 @@
 <resources>
+    <!-- Nombre de la aplicación -->
     <string name="app_name">MotoGest</string>
+
+    <!-- Navegación Principal -->
+    <string name="nav_recepcion">Recepción</string>
+    <string name="nav_taller">Taller</string>
+    <string name="nav_entregas">Entregas</string>
+    <string name="nav_gerencia">Gerencia</string>
+
+    <!-- Estados de Órdenes (OrderStatus) -->
+    <string name="status_recibida">Pendiente</string>
+    <string name="status_recibida_plural">Pendientes</string>
+    <string name="status_en_proceso">En Proceso</string>
+    <string name="status_esperando_refacciones">Esp. Refacciones</string>
+    <string name="status_en_pruebas">En Pruebas</string>
+    <string name="status_lista_entrega">Lista para Entrega</string>
+    <string name="status_lista_entrega_plural">Listas</string>
+    <string name="status_en_camino">En Camino</string>
+    <string name="status_entregada">Entregada</string>
+    <string name="status_entregadas_plural">Entregadas</string>
+    <string name="status_cancelada">Cancelada</string>
+    <string name="status_canceladas_plural">Canceladas</string>
+
+    <!-- Tipos de Servicio (ServiceType) -->
+    <string name="service_servicio_general">Servicio General / Afinación</string>
+    <string name="service_frenos">Sistema de Frenos</string>
+    <string name="service_reparacion">Reparación General</string>
+    <string name="service_ajuste_motor">Ajuste de Motor</string>
+    <string name="service_otro">Otros Servicios</string>
+
+    <!-- Modalidades de Entrega (DeliveryType) -->
+    <string name="delivery_taller">Recoger en Taller</string>
+    <string name="delivery_domicilio">Entrega a Domicilio</string>
+    <string name="delivery_domicilio_en_taller">Domicilio (En Taller)</string>
+
+    <!-- Periodos de Filtro en Gerencia -->
+    <string name="period_hoy">Hoy</string>
+    <string name="period_esta_semana">Esta Semana</string>
+    <string name="period_este_mes">Este Mes</string>
+    <string name="period_personalizado">Personalizado</string>
+
+    <!-- Acciones y Botones Comunes -->
+    <string name="btn_cancelar">Cancelar</string>
+    <string name="btn_confirmar">Confirmar</string>
+    <string name="btn_volver">Volver</string>
+    <string name="btn_reintentar">Reintentar</string>
+    <string name="btn_cerrar">Cerrar</string>
+    <string name="btn_limpiar">Limpiar</string>
+
+    <!-- Pantalla Recepción -->
+    <string name="recepcion_titulo">Recepción de Unidad</string>
+    <string name="recepcion_subtitulo">Registro de nuevos ingresos al taller</string>
+    <string name="recepcion_tab_nueva">Nueva Recepción</string>
+    <string name="recepcion_tab_entrega">Entrega en Taller</string>
+    <string name="recepcion_entrega_titulo">Entrega en Mostrador / Taller</string>
+    <string name="recepcion_entrega_subtitulo">Cobro y entrega de motos terminadas</string>
+    <string name="recepcion_seccion_cliente">1. Datos del Cliente</string>
+    <string name="recepcion_cliente_registrado_badge">Cliente Registrado</string>
+    <string name="recepcion_cliente_sugerencias_label">Clientes encontrados:</string>
+    <string name="recepcion_btn_cambiar_cliente">Cambiar cliente</string>
+    <string name="recepcion_label_nombre">Nombre completo*</string>
+    <string name="recepcion_label_telefono">Teléfono (10 dígitos)*</string>
+    <string name="recepcion_label_direccion">Dirección (Opcional)</string>
+    <string name="recepcion_seccion_moto">2. Identificación de Motocicleta</string>
+    <string name="recepcion_motos_registradas_titulo">Motos registradas de este cliente:</string>
+    <string name="recepcion_btn_otra_moto">+ Registrar otra moto</string>
+    <string name="recepcion_btn_ver_historial">Historial de servicios</string>
+    <string name="recepcion_label_marca">Marca*</string>
+    <string name="recepcion_label_modelo">Modelo*</string>
+    <string name="recepcion_label_color">Color*</string>
+    <string name="recepcion_label_placa">Placa (Opcional)</string>
+    <string name="recepcion_label_anio">Año (Opcional)</string>
+    <string name="recepcion_label_vin">VIN / Serie</string>
+    <string name="recepcion_seccion_servicio">3. Orden de Servicio</string>
+    <string name="recepcion_label_falla">Problema reportado por el cliente*</string>
+    <string name="recepcion_desc_dictado">Dictar por voz</string>
+    <string name="recepcion_seccion_evidencia">Evidencia de Daños Previos (%1$d/5)</string>
+    <string name="recepcion_desc_foto">Capturar Foto</string>
+    <string name="recepcion_label_foto_item">Foto #%1$d</string>
+    <string name="recepcion_label_danos">Descripción de golpes o rayones previos (Opcional)</string>
+    <string name="recepcion_seccion_modalidad">Modalidad de Entrega</string>
+    <string name="recepcion_btn_guardar">ABRIR ORDEN DE TRABAJO</string>
+    <string name="recepcion_exito_guardar">✓ Orden registrada y enviada al Tablero del Taller.</string>
+    <string name="recepcion_alerta_sin_domicilio_titulo">Cliente sin domicilio registrado</string>
+    <string name="recepcion_alerta_sin_domicilio_mensaje">Seleccionaste Entrega a Domicilio, pero el cliente no tiene dirección. ¿Deseas capturarla ahora?</string>
+    <string name="recepcion_alerta_sin_domicilio_label">Calle, número y colonia</string>
+    <string name="recepcion_alerta_sin_domicilio_btn_guardar">Guardar Dirección</string>
+    <string name="recepcion_alerta_sin_domicilio_btn_continuar">Continuar sin dirección</string>
+    <string name="recepcion_buscar_placeholder">Buscar por cliente, moto, placa o folio...</string>
+    <string name="recepcion_filtro_todas">Todas (%1$d)</string>
+    <string name="recepcion_vacio_titulo">No hay motocicletas listas para entrega en el taller.</string>
+    <string name="recepcion_vacio_busqueda">No se encontraron entregas para \"%1$s\"</string>
+    <string name="recepcion_vacio_subtitulo">Cuando el mecánico marque una moto como "Lista para entrega" en el taller, aparecerá aquí para ser cobrada y entregada.</string>
+    <string name="recepcion_card_labor">Mano de obra: %1$s</string>
+    <string name="recepcion_card_parts">Refacciones: %1$s</string>
+    <string name="recepcion_card_total_cobrar">Total a cobrar:</string>
+    <string name="recepcion_card_btn_entregar">COBRAR Y ENTREGAR AL CLIENTE</string>
+    <string name="recepcion_dialog_entregar_titulo">¿Confirmar Entrega en Taller?</string>
+    <string name="recepcion_dialog_entregar_btn">CONFIRMAR ENTREGA Y COBRO</string>
+    <string name="recepcion_dialog_entregar_nota">Al confirmar, la orden se marcará como ENTREGADA y pasará al panel de Gerencia.</string>
+    <string name="recepcion_recs_label">Recomendaciones mecánicas para el cliente:</string>
+    <string name="recepcion_dialog_historial_titulo">Historial de Servicios: %1$s %2$s</string>
+    <string name="recepcion_historial_sin_ordenes">No hay órdenes previas registradas para este vehículo.</string>
+    <string name="recepcion_buscar_cliente_placeholder">Buscar cliente por nombre o celular...</string>
+    <string name="recepcion_btn_nuevo_cliente">Nuevo</string>
+    <string name="recepcion_dialog_nuevo_cliente_titulo">Registrar Nuevo Cliente</string>
+    <string name="recepcion_dialog_nuevo_cliente_guardar">Guardar y Seleccionar</string>
+    <string name="recepcion_dialog_nueva_moto_titulo">Registrar Motocicleta</string>
+    <string name="recepcion_dialog_nueva_moto_subtitulo">Asociada a: %1$s</string>
+    <string name="recepcion_dialog_nueva_moto_guardar">Guardar Motocicleta</string>
+    <string name="recepcion_sin_cliente_aviso">Busca un cliente registrado o presiona \'+\' para dar de alta uno nuevo.</string>
+    <string name="recepcion_sin_motos_aviso">Este cliente no tiene motocicletas registradas. Presiona \'+\' para dar de alta su moto.</string>
+    <string name="recepcion_btn_nueva_moto">+ Nueva Moto</string>
+    <string name="recepcion_moto_seleccionada_label">Motocicleta Seleccionada</string>
+    <string name="recepcion_btn_cambiar_moto">Cambiar</string>
+    <string name="recepcion_foto_capturada">Foto adjuntada correctamente</string>
+    <string name="recepcion_foto_tomar">Tomar / Seleccionar Foto</string>
+    <string name="recepcion_btn_sincronizar_nube">Sincronizar Nube</string>
+
+    <!-- Pantalla Taller -->
+    <string name="taller_titulo">Tablero del Taller</string>
+    <string name="taller_vacio_estado">No hay motos en estado: %1$s</string>
+    <string name="taller_btn_comenzar">COMENZAR TRABAJO</string>
+    <string name="taller_btn_abrir_hoja">HOJA DE SERVICIO Y REFACCIONES</string>
+    <string name="taller_btn_esp_piezas">Esp. Piezas</string>
+    <string name="taller_btn_en_pruebas">En Pruebas</string>
+    <string name="taller_btn_marcar_lista">MARCAR LISTA PARA ENTREGA</string>
+    <string name="taller_btn_entregar_directo">ENTREGAR AL CLIENTE EN TALLER</string>
+    <string name="taller_btn_entregar_si_paso">ENTREGAR AL CLIENTE EN TALLER</string>
+    <string name="taller_badge_esperando_repartidor">Programada para Entrega a Domicilio (Esperando repartidor)</string>
+    <string name="taller_badge_recoger_mostrador">Recoger en Mostrador / Taller</string>
+    <string name="taller_dialog_entregar_titulo">¿Marcar Moto como Entregada?</string>
+    <string name="taller_dialog_entregar_btn">CONFIRMAR ENTREGA</string>
+    <string name="taller_dialog_entregar_nota">Al confirmar, la orden se marcará como ENTREGADA y se registrará en las métricas de Gerencia.</string>
+    <string name="taller_modal_titulo">Hoja de Taller: %1$s %2$s</string>
+    <string name="taller_modal_vin_label">Número de Serie / VIN (Opcional)</string>
+    <string name="taller_modal_mano_obra_titulo">Mano de Obra Realizada</string>
+    <string name="taller_modal_label_concepto">Concepto</string>
+    <string name="taller_modal_label_costo_mxn">$ MXN</string>
+    <string name="taller_modal_refacciones_titulo">Refacciones y Repuestos Utilizados</string>
+    <string name="taller_modal_label_pieza">Pieza o repuesto</string>
+    <string name="taller_modal_label_recs">Recomendaciones técnicas para el cliente...</string>
+    <string name="taller_modal_btn_guardar">GUARDAR HOJA DE TALLER</string>
+
+    <!-- Pantalla Entregas -->
+    <string name="entregas_titulo">Módulo de Entregas</string>
+    <string name="entregas_vacio_titulo">No hay órdenes pendientes de entrega a domicilio.</string>
+    <string name="entregas_filtro_todas">Todas (%1$d)</string>
+    <string name="entregas_maps_proximamente">Navegación en Maps próximamente</string>
+    <string name="entregas_btn_ver_maps">Ver en Maps</string>
+    <string name="entregas_btn_editar_costo">Editar Costo</string>
+    <string name="entregas_btn_iniciar_camino">INICIAR ENTREGA (EN CAMINO)</string>
+    <string name="entregas_btn_marcar_entregada">MARCAR COMO ENTREGADA</string>
+    <string name="entregas_costo_envio_label">Costo de Envío:</string>
+    <string name="entregas_costo_gratis">$0.00 (Gratis)</string>
+    <string name="entregas_total_cobrar_label">Total a Cobrar:</string>
+    <string name="entregas_sin_direccion">Sin dirección registrada</string>
+    <string name="entregas_dialog_costo_titulo">Costo de Envío a Domicilio</string>
+    <string name="entregas_dialog_costo_label">Monto de envío ($)*</string>
+    <string name="entregas_dialog_costo_nota">Nota: Al entregarse, este monto se guardará como costo habitual en la ficha del cliente.</string>
+    <string name="entregas_dialog_costo_btn_guardar">Guardar Costo</string>
+    <string name="entregas_alerta_costo_cero_titulo">Confirmación de Envío Gratuito</string>
+    <string name="entregas_alerta_costo_cero_mensaje">El costo de envío es $0.00. ¿Está seguro de entregar el pedido de manera gratuita?</string>
+    <string name="entregas_alerta_costo_cero_btn_confirmar">Sí, continuar</string>
+    <string name="entregas_alerta_costo_cero_btn_modificar">Modificar costo</string>
+    <string name="entregas_dialog_confirmar_titulo">¿Confirmar entrega del pedido?</string>
+    <string name="entregas_dialog_confirmar_btn">ENTREGAR PEDIDO</string>
+    <string name="entregas_dialog_folio_cliente">Folio: %1$s • Cliente: %2$s</string>
+    <string name="entregas_dialog_confirmar_cuerpo">Se marcará la orden %1$s como ENTREGADA y finalizará el ciclo de servicio.</string>
+    <string name="entregas_dialog_confirmar_costo">Costo de envío aplicado: %1$s</string>
+    <string name="entregas_dialog_confirmar_total">Total a cobrar al cliente: %1$s</string>
+    <string name="entregas_dialog_confirmar_tarifa_habitual">La tarifa habitual de %1$s se actualizará automáticamente a %2$s.</string>
+    <string name="entregas_moto_color">%1$s %2$s • Color: %3$s</string>
+
+    <!-- Pantalla Gerencia -->
+    <string name="gerencia_titulo">Panel de Gerencia</string>
+    <string name="gerencia_subtitulo">Control operativo y financiero del taller</string>
+    <string name="gerencia_tab_metricas">Métricas y Finanzas</string>
+    <string name="gerencia_tab_directorio">Historial y Directorio</string>
+    <string name="gerencia_periodo_titulo">Periodo de Consulta</string>
+    <string name="gerencia_rango_activo">Rango activo: %1$s al %2$s (Tocar para cambiar)</string>
+    <string name="gerencia_toggle_excluir_refacciones">Excluir costo de refacciones</string>
+    <string name="gerencia_toggle_desc_ganancia_real">Mostrando ganancia real (Mano de obra + envíos)</string>
+    <string name="gerencia_toggle_desc_ingreso_bruto">Mostrando ingreso bruto (Incluye refacciones)</string>
+    <string name="gerencia_metricas_titulo">Métricas Financieras</string>
+    <string name="gerencia_kpi_ganancia_neta">Ganancia Neta del Taller</string>
+    <string name="gerencia_kpi_ingresos_brutos">Ingresos Totales Brutos</string>
+    <string name="gerencia_kpi_refacciones_descontadas">Refacciones descontadas: %1$s</string>
+    <string name="gerencia_kpi_motos_atendidas_label">Entregadas</string>
+    <string name="gerencia_kpi_motos_subtitulo">motos concluidas</string>
+    <string name="gerencia_kpi_ticket_promedio_label">Ticket Promedio</string>
+    <string name="gerencia_kpi_ticket_subtitulo">por servicio</string>
+    <string name="gerencia_distribucion_titulo">Distribución de Servicios</string>
+    <string name="gerencia_distribucion_subtitulo">Servicios realizados en el periodo actual</string>
+    <string name="gerencia_distribucion_sin_datos">Sin datos de distribución para este periodo.</string>
+    <string name="gerencia_historial_titulo">Historial de Órdenes Finalizadas</string>
+    <string name="gerencia_buscar_placeholder">Buscar por cliente, moto o placas...</string>
+    <string name="gerencia_vacio_titulo">No hay órdenes registradas en este periodo</string>
+    <string name="gerencia_vacio_busqueda">No se encontraron resultados para \"%1$s\"</string>
+    <string name="gerencia_vacio_sugerencia">Intenta seleccionar otro periodo o cambiar el criterio de búsqueda.</string>
+    <string name="gerencia_btn_cargar_demo">Cargar datos de ejemplo</string>
+    <string name="gerencia_dialog_fecha_titulo">Seleccionar Rango de Consulta</string>
+    <string name="gerencia_dialog_fecha_btn_aplicar">Aplicar Rango</string>
+    <string name="gerencia_dialog_detalle_titulo">Detalle de la Orden: %1$s</string>
+    <string name="gerencia_directorio_buscar">Buscar cliente o motocicleta...</string>
+    <string name="gerencia_directorio_vacio">No hay clientes ni motocicletas registradas aún.</string>
 </resources>
