@@ -6,6 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.TallerJC.motogest.data.local.converter.Converters
+import com.TallerJC.motogest.data.local.dao.MediaDao
+import com.TallerJC.motogest.data.local.dao.NotificationDao
 import com.TallerJC.motogest.data.local.dao.WorkOrderDao
 import com.TallerJC.motogest.data.local.entity.*
 
@@ -16,16 +18,19 @@ import com.TallerJC.motogest.data.local.entity.*
         SparePartEntity::class,
         UserEntity::class,
         WorkItemEntity::class,
-        WorkOrderEntity::class
+        WorkOrderEntity::class,
+        NotificationEntity::class,
+        MediaEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
-// Añadimos el conversor para las listas de strings (fotos)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun workOrderDao(): WorkOrderDao
+    abstract fun notificationDao(): NotificationDao
+    abstract fun mediaDao(): MediaDao
 
     companion object {
         @Volatile

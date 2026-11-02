@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "988247311095",
+    "project_id": "motogest-2caee",
+    "storage_bucket": "motogest-2caee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:988247311095:android:0a1a6c98497610c89889f2",
+        "android_client_info": {
+          "package_name": "com.TallerJC.motogest"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDyo3ozgqsMP0l4Hx3c4V4VoiGA4gX-_x0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
