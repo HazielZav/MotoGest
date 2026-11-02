@@ -14,10 +14,11 @@ data class DistribucionServicio(
     val tipo: ServiceType,
     val nombre: String,
     val cantidad: Int,
-    val porcentaje: Float // Valor entre 0.0f y 1.0f para LinearProgressIndicator
+    val porcentaje: Float
 )
 
 data class GerenciaUiState(
+    val pestanaSeleccionada: Int = 0, // 0 = Métricas y Finanzas, 1 = Historial y Directorio
     val periodoSeleccionado: PeriodoFiltro = PeriodoFiltro.ESTE_MES,
     val fechaInicioPersonalizada: Long? = null,
     val fechaFinPersonalizada: Long? = null,
@@ -33,10 +34,21 @@ data class GerenciaUiState(
     // Métricas Operativas
     val distribucionServicios: List<DistribucionServicio> = emptyList(),
 
-    // Consulta Histórica
+    // Consulta Histórica de Órdenes Finalizadas
     val textoBusqueda: String = "",
     val ordenesHistorial: List<WorkOrderWithDetails> = emptyList(),
     val ordenesFiltradas: List<WorkOrderWithDetails> = emptyList(),
+
+    // Directorio y Registro Completo de Unidades
+    val todasLasOrdenes: List<WorkOrderWithDetails> = emptyList(),
+    val textoBusquedaDirectorio: String = "",
+    val ordenesDirectorioFiltradas: List<WorkOrderWithDetails> = emptyList(),
+
+    // Modales de Detalle
+    val ordenSeleccionadaDetalle: WorkOrderWithDetails? = null,
+    val mostrarModalDetalleOrden: Boolean = false,
+    val historialMotoSeleccionada: List<WorkOrderWithDetails> = emptyList(),
+    val mostrarModalHistorialMoto: Boolean = false,
 
     // Banderas de UI
     val isLoading: Boolean = false,

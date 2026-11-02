@@ -1,6 +1,5 @@
 package com.TallerJC.motogest.ui.entregas
 
-import android.content.Context
 import android.content.res.Configuration
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
@@ -16,12 +15,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.TallerJC.motogest.R
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
 import com.TallerJC.motogest.data.local.entity.WorkOrderEntity
@@ -29,6 +30,7 @@ import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.ui.util.getLabelRes
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -38,6 +40,7 @@ fun PantallaEntregas(
 ) {
     val estadoUi by viewModel.estadoUi.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val mapsMsg = stringResource(R.string.entregas_maps_proximamente)
 
     PantallaEntregasContenido(
         estadoUi = estadoUi,
@@ -55,7 +58,7 @@ fun PantallaEntregas(
         onCerrarConfirmarEntrega = viewModel::cerrarDialogoConfirmarEntrega,
         onLimpiarMensajes = viewModel::limpiarMensajes,
         onNavegarEnMaps = {
-            Toast.makeText(context, "Navegación en Maps próximamente", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, mapsMsg, Toast.LENGTH_SHORT).show()
         }
     )
 }
@@ -84,7 +87,7 @@ fun PantallaEntregasContenido(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Módulo de Entregas", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.entregas_titulo), fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 )
@@ -120,7 +123,7 @@ fun PantallaEntregasContenido(
                         IconButton(onClick = onLimpiarMensajes, modifier = Modifier.size(24.dp)) {
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "Cerrar",
+                                contentDescription = stringResource(R.string.btn_cerrar),
                                 tint = MaterialTheme.colorScheme.onErrorContainer
                             )
                         }
@@ -151,7 +154,7 @@ fun PantallaEntregasContenido(
                         IconButton(onClick = onLimpiarMensajes, modifier = Modifier.size(24.dp)) {
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "Cerrar",
+                                contentDescription = stringResource(R.string.btn_cerrar),
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
@@ -168,7 +171,7 @@ fun PantallaEntregasContenido(
                     FilterChip(
                         selected = estadoUi.filtroEstado == null,
                         onClick = { onFiltroCambio(null) },
-                        label = { Text("Todas (${estadoUi.ordenesParaEntrega.size})") },
+                        label = { Text(stringResource(R.string.entregas_filtro_todas, estadoUi.ordenesParaEntrega.size)) },
                         modifier = Modifier.height(48.dp)
                     )
                 }
@@ -176,7 +179,7 @@ fun PantallaEntregasContenido(
                     FilterChip(
                         selected = estadoUi.filtroEstado == estado,
                         onClick = { onFiltroCambio(estado) },
-                        label = { Text(formatearEstadoEntrega(estado)) },
+                        label = { Text(stringResource(estado.getLabelRes(plural = true))) },
                         modifier = Modifier.height(48.dp)
                     )
                 }
@@ -207,7 +210,7 @@ fun PantallaEntregasContenido(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "No hay órdenes pendientes de entrega a domicilio.",
+                            text = stringResource(R.string.entregas_vacio_titulo),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -252,21 +255,21 @@ fun PantallaEntregasContenido(
                 },
                 title = {
                     Text(
-                        text = "Costo de Envío a Domicilio",
+                        text = stringResource(R.string.entregas_dialog_costo_titulo),
                         fontWeight = FontWeight.Bold
                     )
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
-                            text = "Folio: ${orden.folio} • Cliente: ${cliente.name}",
+                            text = stringResource(R.string.entregas_dialog_folio_cliente, orden.folio, cliente.name),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         OutlinedTextField(
                             value = estadoUi.costoEnvioEdicion,
                             onValueChange = onCostoCambio,
-                            label = { Text("Monto de envío ($)*") },
+                            label = { Text(stringResource(R.string.entregas_dialog_costo_label)) },
                             placeholder = { Text("0.00") },
                             leadingIcon = {
                                 Icon(Icons.Default.AttachMoney, contentDescription = null)
@@ -276,7 +279,7 @@ fun PantallaEntregasContenido(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Text(
-                            text = "Nota: Al entregarse, este monto se guardará como costo habitual en la ficha del cliente.",
+                            text = stringResource(R.string.entregas_dialog_costo_nota),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -287,7 +290,7 @@ fun PantallaEntregasContenido(
                         onClick = onGuardarCosto,
                         modifier = Modifier.heightIn(min = 48.dp)
                     ) {
-                        Text("Guardar Costo")
+                        Text(stringResource(R.string.entregas_dialog_costo_btn_guardar))
                     }
                 },
                 dismissButton = {
@@ -295,7 +298,7 @@ fun PantallaEntregasContenido(
                         onClick = onCerrarEdicionCosto,
                         modifier = Modifier.heightIn(min = 48.dp)
                     ) {
-                        Text("Cancelar")
+                        Text(stringResource(R.string.btn_cancelar))
                     }
                 }
             )
@@ -315,13 +318,13 @@ fun PantallaEntregasContenido(
                 },
                 title = {
                     Text(
-                        text = "Confirmación de Envío Gratuito",
+                        text = stringResource(R.string.entregas_alerta_costo_cero_titulo),
                         fontWeight = FontWeight.Bold
                     )
                 },
                 text = {
                     Text(
-                        text = "El costo de envío es $0.00. ¿Está seguro de entregar el pedido de manera gratuita?",
+                        text = stringResource(R.string.entregas_alerta_costo_cero_mensaje),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 },
@@ -331,7 +334,7 @@ fun PantallaEntregasContenido(
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                         modifier = Modifier.heightIn(min = 48.dp)
                     ) {
-                        Text("Sí, continuar", fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.entregas_alerta_costo_cero_btn_confirmar), fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
@@ -339,7 +342,7 @@ fun PantallaEntregasContenido(
                         onClick = onDescartarAlertaCostoCero,
                         modifier = Modifier.heightIn(min = 48.dp)
                     ) {
-                        Text("Modificar costo")
+                        Text(stringResource(R.string.entregas_alerta_costo_cero_btn_modificar))
                     }
                 }
             )
@@ -362,26 +365,30 @@ fun PantallaEntregasContenido(
                 },
                 title = {
                     Text(
-                        text = "¿Confirmar entrega del pedido?",
+                        text = stringResource(R.string.entregas_dialog_confirmar_titulo),
                         fontWeight = FontWeight.Bold
                     )
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            text = "Se marcará la orden ${orden.folio} como ENTREGADA y finalizará el ciclo de servicio."
+                            text = stringResource(R.string.entregas_dialog_confirmar_cuerpo, orden.folio)
                         )
                         Text(
-                            text = "Costo de envío aplicado: ${formatoMoneda.format(orden.deliveryCost)}",
+                            text = stringResource(R.string.entregas_dialog_confirmar_costo, formatoMoneda.format(orden.deliveryCost)),
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Total a cobrar al cliente: ${formatoMoneda.format(orden.totalAmount)}",
+                            text = stringResource(R.string.entregas_dialog_confirmar_total, formatoMoneda.format(orden.totalAmount)),
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "La tarifa habitual de ${cliente.name} se actualizará automáticamente a ${formatoMoneda.format(orden.deliveryCost)}.",
+                            text = stringResource(
+                                R.string.entregas_dialog_confirmar_tarifa_habitual,
+                                cliente.name,
+                                formatoMoneda.format(orden.deliveryCost)
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -392,7 +399,7 @@ fun PantallaEntregasContenido(
                         onClick = onConfirmarEntregaDirecta,
                         modifier = Modifier.heightIn(min = 48.dp)
                     ) {
-                        Text("ENTREGAR PEDIDO", fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.entregas_dialog_confirmar_btn), fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
@@ -400,7 +407,7 @@ fun PantallaEntregasContenido(
                         onClick = onCerrarConfirmarEntrega,
                         modifier = Modifier.heightIn(min = 48.dp)
                     ) {
-                        Text("Volver")
+                        Text(stringResource(R.string.btn_volver))
                     }
                 }
             )
@@ -450,7 +457,9 @@ fun TarjetaOrdenEntrega(
                     }
                 ) {
                     Text(
-                        text = if (orden.status == OrderStatus.EN_CAMINO.name) "EN CAMINO" else "LISTA PARA ENTREGA",
+                        text = stringResource(
+                            if (orden.status == OrderStatus.EN_CAMINO.name) R.string.status_en_camino else R.string.status_lista_entrega
+                        ).uppercase(),
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.Bold
@@ -505,7 +514,7 @@ fun TarjetaOrdenEntrega(
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
-                    text = cliente.address?.ifBlank { null } ?: "Sin dirección registrada",
+                    text = cliente.address?.ifBlank { null } ?: stringResource(R.string.entregas_sin_direccion),
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (cliente.address.isNullOrBlank()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                 )
@@ -523,7 +532,7 @@ fun TarjetaOrdenEntrega(
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
-                    text = "${moto.brand} ${moto.model} • Color: ${moto.color}",
+                    text = stringResource(R.string.entregas_moto_color, moto.brand, moto.model, moto.color),
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -538,12 +547,12 @@ fun TarjetaOrdenEntrega(
             ) {
                 Column {
                     Text(
-                        text = "Costo de Envío:",
+                        text = stringResource(R.string.entregas_costo_envio_label),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = if (orden.deliveryCost > 0.0) formatoMoneda.format(orden.deliveryCost) else "$0.00 (Gratis)",
+                        text = if (orden.deliveryCost > 0.0) formatoMoneda.format(orden.deliveryCost) else stringResource(R.string.entregas_costo_gratis),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = if (orden.deliveryCost > 0.0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
@@ -552,7 +561,7 @@ fun TarjetaOrdenEntrega(
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "Total a Cobrar:",
+                        text = stringResource(R.string.entregas_total_cobrar_label),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -571,7 +580,6 @@ fun TarjetaOrdenEntrega(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Botón "Ver en Maps" (Placeholder Toast)
                 OutlinedButton(
                     onClick = onNavegarEnMaps,
                     modifier = Modifier
@@ -580,14 +588,13 @@ fun TarjetaOrdenEntrega(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Navigation,
-                        contentDescription = "Ver en Maps",
+                        contentDescription = stringResource(R.string.entregas_btn_ver_maps),
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Ver en Maps", fontSize = 13.sp)
+                    Text(stringResource(R.string.entregas_btn_ver_maps), fontSize = 13.sp)
                 }
 
-                // Botón para editar costo de envío
                 OutlinedButton(
                     onClick = onAbrirEdicionCosto,
                     modifier = Modifier
@@ -596,11 +603,11 @@ fun TarjetaOrdenEntrega(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
-                        contentDescription = "Editar Costo",
+                        contentDescription = stringResource(R.string.entregas_btn_editar_costo),
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Editar Costo", fontSize = 13.sp)
+                    Text(stringResource(R.string.entregas_btn_editar_costo), fontSize = 13.sp)
                 }
             }
 
@@ -616,7 +623,7 @@ fun TarjetaOrdenEntrega(
                     Icon(Icons.AutoMirrored.Filled.DirectionsBike, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "INICIAR ENTREGA (EN CAMINO)",
+                        text = stringResource(R.string.entregas_btn_iniciar_camino),
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
@@ -632,21 +639,13 @@ fun TarjetaOrdenEntrega(
                     Icon(Icons.Default.CheckCircle, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "MARCAR COMO ENTREGADA",
+                        text = stringResource(R.string.entregas_btn_marcar_entregada),
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
                 }
             }
         }
-    }
-}
-
-private fun formatearEstadoEntrega(estado: OrderStatus): String {
-    return when (estado) {
-        OrderStatus.LISTA_ENTREGA -> "Listas para entrega"
-        OrderStatus.EN_CAMINO -> "En camino"
-        else -> estado.name.replace("_", " ")
     }
 }
 

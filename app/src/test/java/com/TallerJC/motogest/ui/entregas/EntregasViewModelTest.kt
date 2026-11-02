@@ -64,15 +64,107 @@ class EntregasViewModelTest {
             emitCurrent()
         }
 
+        override suspend fun insertClients(clients: List<ClientEntity>) {
+            this.clients.addAll(clients)
+            emitCurrent()
+        }
+
         override suspend fun insertMotorcycle(motorcycle: MotorcycleEntity) {
             motorcycles.removeAll { it.id == motorcycle.id }
             motorcycles.add(motorcycle)
             emitCurrent()
         }
 
+        override suspend fun insertMotorcycles(motorcycles: List<MotorcycleEntity>) {
+            this.motorcycles.addAll(motorcycles)
+            emitCurrent()
+        }
+
         override suspend fun insertWorkItem(item: WorkItemEntity) {}
+        override suspend fun insertWorkItems(items: List<WorkItemEntity>) {}
         override suspend fun insertSparePart(part: SparePartEntity) {}
+        override suspend fun insertSpareParts(parts: List<SparePartEntity>) {}
+        override suspend fun countOrders(): Int = orders.size
         override suspend fun updateMotorcycleVin(motoId: String, nuevoVin: String) {}
+
+        override fun getAllClients(): Flow<List<ClientEntity>> = MutableStateFlow(clients)
+        override suspend fun getClientById(clientId: String): ClientEntity? = clients.find { it.id == clientId }
+        override fun getMotorcyclesByClientId(clientId: String): Flow<List<MotorcycleEntity>> = MutableStateFlow(motorcycles.filter { it.clientId == clientId })
+        override suspend fun getMotorcycleById(motoId: String): MotorcycleEntity? = motorcycles.find { it.id == motoId }
+        override fun getOrdersByMotorcycleId(motorcycleId: String): Flow<List<WorkOrderWithDetails>> = flowOf(ordersFlow.value.filter { it.motorcycle.id == motorcycleId })
+        override fun getOrdersByClientId(clientId: String): Flow<List<WorkOrderWithDetails>> = flowOf(ordersFlow.value.filter { it.client.id == clientId })
+        override suspend fun getLaborTotal(orderId: String): Double = orders.find { it.id == orderId }?.totalLaborCost ?: 0.0
+        override suspend fun getPartsTotal(orderId: String): Double = orders.find { it.id == orderId }?.totalPartsCost ?: 0.0
+        override suspend fun updateOrderFinancialTotals(orderId: String, labor: Double, parts: Double, updatedAt: Long) {
+            val idx = orders.indexOfFirst { it.id == orderId }
+            if (idx != -1) {
+                orders[idx] = orders[idx].copy(totalLaborCost = labor, totalPartsCost = parts, totalAmount = labor + parts + orders[idx].deliveryCost, updatedAt = updatedAt)
+                emitCurrent()
+            }
+        }
+        override suspend fun updateRecommendations(orderId: String, recommendations: String, updatedAt: Long) {
+            val idx = orders.indexOfFirst { it.id == orderId }
+            if (idx != -1) {
+                orders[idx] = orders[idx].copy(recommendations = recommendations, updatedAt = updatedAt)
+                emitCurrent()
+            }
+        }
+        override suspend fun updateOrderStatus(orderId: String, status: String, startedAt: Long?, completedAt: Long?, deliveredAt: Long?, updatedAt: Long) {
+            val idx = orders.indexOfFirst { it.id == orderId }
+            if (idx != -1) {
+                orders[idx] = orders[idx].copy(
+                    status = status,
+                    startedAt = startedAt ?: orders[idx].startedAt,
+                    completedAt = completedAt ?: orders[idx].completedAt,
+                    deliveredAt = deliveredAt ?: orders[idx].deliveredAt,
+                    updatedAt = updatedAt
+                )
+                emitCurrent()
+            }
+        }
+        override suspend fun updateClientDeliveryCost(clientId: String, cost: Double) {
+            val idx = clients.indexOfFirst { it.id == clientId }
+            if (idx != -1) {
+                clients[idx] = clients[idx].copy(defaultDeliveryCost = cost)
+                emitCurrent()
+            }
+        }
+        override suspend fun deleteOrderById(orderId: String) {
+            orders.removeAll { it.id == orderId }
+            emitCurrent()
+        }
+        override suspend fun deleteClientById(clientId: String) {
+            clients.removeAll { it.id == clientId }
+            emitCurrent()
+        }
+        override suspend fun deleteMotorcycleById(motoId: String) {
+            motorcycles.removeAll { it.id == motoId }
+            emitCurrent()
+        }
+        override suspend fun getUnsyncedOrders(): List<WorkOrderEntity> = orders.filter { !it.isSynced }
+        override suspend fun markOrderAsSynced(orderId: String) {
+            val idx = orders.indexOfFirst { it.id == orderId }
+            if (idx != -1) {
+                orders[idx] = orders[idx].copy(isSynced = true)
+                emitCurrent()
+            }
+        }
+        override suspend fun getUnsyncedClients(): List<ClientEntity> = clients.filter { !it.isSynced }
+        override suspend fun markClientAsSynced(clientId: String) {
+            val idx = clients.indexOfFirst { it.id == clientId }
+            if (idx != -1) {
+                clients[idx] = clients[idx].copy(isSynced = true)
+                emitCurrent()
+            }
+        }
+        override suspend fun getUnsyncedMotorcycles(): List<MotorcycleEntity> = motorcycles.filter { !it.isSynced }
+        override suspend fun markMotorcycleAsSynced(motoId: String) {
+            val idx = motorcycles.indexOfFirst { it.id == motoId }
+            if (idx != -1) {
+                motorcycles[idx] = motorcycles[idx].copy(isSynced = true)
+                emitCurrent()
+            }
+        }
     }
 
     @Before

@@ -21,6 +21,10 @@ class GerenciaViewModelTest {
     private fun crearMockRepository(ordenes: List<WorkOrderWithDetails>): GerenciaRepository {
         return object : GerenciaRepository {
             override fun obtenerOrdenesEntregadas(): Flow<List<WorkOrderWithDetails>> = flowOf(ordenes)
+            override fun obtenerTodasLasOrdenes(): Flow<List<WorkOrderWithDetails>> = flowOf(ordenes)
+            override fun obtenerHistorialMoto(motorcycleId: String): Flow<List<WorkOrderWithDetails>> = flowOf(ordenes.filter { it.motorcycle.id == motorcycleId })
+            override fun obtenerHistorialCliente(clientId: String): Flow<List<WorkOrderWithDetails>> = flowOf(ordenes.filter { it.client.id == clientId })
+            override suspend fun insertarDatosDemo() {}
         }
     }
 
@@ -174,5 +178,38 @@ class GerenciaViewModelTest {
         assertEquals(0.0, state.ingresosTotales, 0.001)
         assertEquals(0.0, state.ticketPromedio, 0.001)
         assertTrue(state.ordenesFiltradas.isEmpty())
+    }
+
+    @Test
+    fun testDirectorioEHistorialDeMotos() = runBlocking {
+        val now = System.currentTimeMillis()
+        val c = ClientEntity(id = "c1", name = "Guillermo Mendoza", phone = "4457774411")
+        val m = MotorcycleEntity(id = "m1", clientId = "c1", brand = "Vento", model = "Nitrox 250", color = "Naranja", photoUrl = "", plate = "VNT-55")
+
+        val orden = WorkOrderWithDetails(
+            order = WorkOrderEntity(id = "o1", folio = "ORD-005", clientId = "c1", motorcycleId = "m1", receivedByUserId = "u", status = OrderStatus.ENTREGADA.name, serviceType = ServiceType.OTRO.name, reportedFailure = "Exploradoras", deliveryType = "TALLER", totalAmount = 1000.0, deliveredAt = now),
+            client = c,
+            motorcycle = m,
+            workItems = emptyList(),
+            spareParts = emptyList()
+        )
+
+        val viewModel = GerenciaViewModel(crearMockRepository(listOf(orden)), Dispatchers.Unconfined)
+
+        assertEquals(1, viewModel.estadoUi.value.todasLasOrdenes.size)
+        assertEquals(1, viewModel.estadoUi.value.ordenesDirectorioFiltradas.size)
+
+        // Búsqueda en directorio por placa
+        viewModel.actualizarBusquedaDirectorio("VNT")
+        assertEquals(1, viewModel.estadoUi.value.ordenesDirectorioFiltradas.size)
+        assertEquals("VNT-55", viewModel.estadoUi.value.ordenesDirectorioFiltradas.first().motorcycle.plate)
+
+        // Detalle de orden modal
+        viewModel.abrirDetalleOrden(orden)
+        assertTrue(viewModel.estadoUi.value.mostrarModalDetalleOrden)
+        assertEquals(orden, viewModel.estadoUi.value.ordenSeleccionadaDetalle)
+
+        viewModel.cerrarDetalleOrden()
+        assertFalse(viewModel.estadoUi.value.mostrarModalDetalleOrden)
     }
 }

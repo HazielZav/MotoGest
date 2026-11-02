@@ -5,13 +5,16 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.data.repository.OperacionesRepository
+import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class TallerViewModel(
-    private val repository: OperacionesRepository
+    private val repository: OperacionesRepository,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Main
 ) : ViewModel() {
 
     private val _filtroEstado = MutableStateFlow(OrderStatus.RECIBIDA)
@@ -54,7 +57,7 @@ class TallerViewModel(
     }
 
     fun cambiarEstadoOrden(ordenDetalle: WorkOrderWithDetails, nuevoEstado: OrderStatus) {
-        viewModelScope.launch {
+        viewModelScope.launch(dispatcher) {
             repository.cambiarEstadoOrden(ordenDetalle.order, nuevoEstado)
             // Cambiamos a la pestaña del nuevo estado o cerramos modal si ya está lista
             if (nuevoEstado == OrderStatus.LISTA_ENTREGA) {
@@ -63,10 +66,22 @@ class TallerViewModel(
         }
     }
 
+    fun entregarOrdenEnTaller(ordenDetalle: WorkOrderWithDetails) {
+        viewModelScope.launch(dispatcher) {
+            repository.marcarOrdenEntregada(
+                ordenActual = ordenDetalle.order,
+                clienteActual = ordenDetalle.client,
+                costoEnvioFinal = 0.0,
+                modalidadFinal = DeliveryType.TALLER
+            )
+            _idOrdenSeleccionada.value = null
+        }
+    }
+
     fun agregarTrabajoMecanico(ordenDetalle: WorkOrderWithDetails, concepto: String, costoTexto: String) {
         val costo = costoTexto.toDoubleOrNull() ?: return
         if (concepto.isBlank() || costo <= 0.0) return
-        viewModelScope.launch {
+        viewModelScope.launch(dispatcher) {
             repository.agregarManoDeObra(ordenDetalle.order, concepto.trim(), costo)
         }
     }
@@ -74,24 +89,27 @@ class TallerViewModel(
     fun agregarRefaccion(ordenDetalle: WorkOrderWithDetails, pieza: String, costoTexto: String) {
         val costo = costoTexto.toDoubleOrNull() ?: return
         if (pieza.isBlank() || costo <= 0.0) return
-        viewModelScope.launch {
+        viewModelScope.launch(dispatcher) {
             repository.agregarRefaccion(ordenDetalle.order, pieza.trim(), costo)
         }
     }
 
     fun guardarRecomendacionesYVin(ordenDetalle: WorkOrderWithDetails, recomendaciones: String, vin: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(dispatcher) {
             repository.actualizarNotasYVinTaller(ordenDetalle.order, recomendaciones.trim(), vin.trim())
             _idOrdenSeleccionada.value = null
         }
     }
 
     companion object {
-        fun provideFactory(repository: OperacionesRepository): ViewModelProvider.Factory =
+        fun provideFactory(
+            repository: OperacionesRepository,
+            dispatcher: CoroutineDispatcher = Dispatchers.Main
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return TallerViewModel(repository) as T
+                    return TallerViewModel(repository, dispatcher) as T
                 }
             }
     }

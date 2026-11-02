@@ -1,10 +1,10 @@
 package com.TallerJC.motogest.ui.gerencia
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.data.repository.GerenciaRepository
-import com.TallerJC.motogest.data.repository.GerenciaRepositoryImpl
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 import kotlinx.coroutines.CoroutineDispatcher
@@ -15,21 +15,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 
 class GerenciaViewModel(
-    private val repository: GerenciaRepository = GerenciaRepositoryImpl(),
+    private val repository: GerenciaRepository,
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : ViewModel() {
 
     private val _estadoUi = MutableStateFlow(GerenciaUiState(isLoading = true))
     val estadoUi: StateFlow<GerenciaUiState> = _estadoUi.asStateFlow()
 
-    // Cache interno de todas las órdenes entregadas obtenidas del repositorio
     private var todasLasOrdenesEntregadas: List<WorkOrderWithDetails> = emptyList()
+    private var todasLasOrdenesSistema: List<WorkOrderWithDetails> = emptyList()
 
     init {
         cargarDatos()
@@ -38,20 +37,57 @@ class GerenciaViewModel(
     fun cargarDatos() {
         viewModelScope.launch(dispatcher) {
             _estadoUi.update { it.copy(isLoading = true, error = null) }
-            repository.obtenerOrdenesEntregadas()
-                .catch { ex ->
-                    _estadoUi.update {
-                        it.copy(
-                            isLoading = false,
-                            error = "Error al consultar las órdenes: ${ex.message}"
-                        )
+
+            // Observamos todas las órdenes entregadas (para finanzas)
+            launch {
+                repository.obtenerOrdenesEntregadas()
+                    .catch { ex ->
+                        _estadoUi.update {
+                            it.copy(
+                                isLoading = false,
+                                error = "Error al consultar las órdenes de gerencia: ${ex.message}"
+                            )
+                        }
                     }
-                }
-                .collect { ordenes ->
-                    todasLasOrdenesEntregadas = ordenes
-                    recalcularMetricasYFiltros()
-                }
+                    .collect { ordenes ->
+                        todasLasOrdenesEntregadas = ordenes
+                        recalcularMetricasYFiltros()
+                    }
+            }
+
+            // Observamos todo el sistema (para historial de unidades y directorio)
+            launch {
+                repository.obtenerTodasLasOrdenes()
+                    .catch { /* error ignorado */ }
+                    .collect { todas ->
+                        todasLasOrdenesSistema = todas
+                        _estadoUi.update { actual ->
+                            actual.copy(todasLasOrdenes = todas)
+                        }
+                        aplicarFiltroDirectorio()
+                    }
+            }
         }
+    }
+
+    fun cargarDatosDemo() {
+        viewModelScope.launch(dispatcher) {
+            _estadoUi.update { it.copy(isLoading = true, error = null) }
+            try {
+                repository.insertarDatosDemo()
+            } catch (ex: Exception) {
+                _estadoUi.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "No se pudieron insertar los datos demo: ${ex.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun cambiarPestana(indice: Int) {
+        _estadoUi.update { it.copy(pestanaSeleccionada = indice) }
     }
 
     fun cambiarPeriodo(nuevoPeriodo: PeriodoFiltro) {
@@ -94,6 +130,48 @@ class GerenciaViewModel(
         aplicarFiltroBusqueda()
     }
 
+    fun actualizarBusquedaDirectorio(texto: String) {
+        _estadoUi.update { it.copy(textoBusquedaDirectorio = texto) }
+        aplicarFiltroDirectorio()
+    }
+
+    fun abrirDetalleOrden(orden: WorkOrderWithDetails) {
+        _estadoUi.update {
+            it.copy(
+                ordenSeleccionadaDetalle = orden,
+                mostrarModalDetalleOrden = true
+            )
+        }
+    }
+
+    fun cerrarDetalleOrden() {
+        _estadoUi.update {
+            it.copy(
+                ordenSeleccionadaDetalle = null,
+                mostrarModalDetalleOrden = false
+            )
+        }
+    }
+
+    fun verHistorialMoto(motoId: String) {
+        viewModelScope.launch(dispatcher) {
+            repository.obtenerHistorialMoto(motoId)
+                .catch { /* error ignorado */ }
+                .collect { historial ->
+                    _estadoUi.update {
+                        it.copy(
+                            historialMotoSeleccionada = historial,
+                            mostrarModalHistorialMoto = true
+                        )
+                    }
+                }
+        }
+    }
+
+    fun cerrarModalHistorialMoto() {
+        _estadoUi.update { it.copy(mostrarModalHistorialMoto = false) }
+    }
+
     private fun recalcularMetricasYFiltros() {
         val estadoActual = _estadoUi.value
         val (inicioMs, finMs) = obtenerRangoMilisegundos(
@@ -127,7 +205,6 @@ class GerenciaViewModel(
                 val gananciaReal = maxOf(0.0, totalOrder - totalParts)
                 sumaIngresos += gananciaReal
             } else {
-                // Ingreso bruto
                 sumaIngresos += totalOrder
             }
         }
@@ -189,6 +266,26 @@ class GerenciaViewModel(
         _estadoUi.update { it.copy(ordenesFiltradas = filtradas) }
     }
 
+    private fun aplicarFiltroDirectorio() {
+        val query = _estadoUi.value.textoBusquedaDirectorio.trim()
+        val todas = todasLasOrdenesSistema
+
+        val filtradas = if (query.isEmpty()) {
+            todas
+        } else {
+            todas.filter { item ->
+                item.client.name.contains(query, ignoreCase = true) ||
+                        item.client.phone.contains(query) ||
+                        item.motorcycle.model.contains(query, ignoreCase = true) ||
+                        item.motorcycle.brand.contains(query, ignoreCase = true) ||
+                        item.motorcycle.plate?.contains(query, ignoreCase = true) == true ||
+                        item.motorcycle.vin?.contains(query, ignoreCase = true) == true
+            }
+        }
+
+        _estadoUi.update { it.copy(ordenesDirectorioFiltradas = filtradas) }
+    }
+
     private fun obtenerRangoMilisegundos(
         periodo: PeriodoFiltro,
         inicioPersonalizado: Long?,
@@ -224,5 +321,18 @@ class GerenciaViewModel(
                 inicio to fin
             }
         }
+    }
+
+    companion object {
+        fun provideFactory(
+            repository: GerenciaRepository,
+            dispatcher: CoroutineDispatcher = Dispatchers.Default
+        ): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    return GerenciaViewModel(repository, dispatcher) as T
+                }
+            }
     }
 }

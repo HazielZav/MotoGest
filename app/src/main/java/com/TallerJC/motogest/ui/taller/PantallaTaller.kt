@@ -6,27 +6,30 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.automirrored.filled.DirectionsBike
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.TallerJC.motogest.R
 import com.TallerJC.motogest.data.local.entity.*
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.ui.util.getLabelRes
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -41,6 +44,7 @@ fun PantallaTaller(
         estadosDisponibles = viewModel.estadosTaller,
         onFiltroCambio = viewModel::cambiarFiltroEstado,
         onCambiarEstadoOrden = viewModel::cambiarEstadoOrden,
+        onEntregarEnTaller = viewModel::entregarOrdenEnTaller,
         onAbrirDetalleOrden = { viewModel.seleccionarOrdenParaDetalle(it.order.id) },
         onCerrarDetalleOrden = { viewModel.seleccionarOrdenParaDetalle(null) },
         onAgregarManoDeObra = viewModel::agregarTrabajoMecanico,
@@ -56,18 +60,20 @@ fun PantallaTallerContenido(
     estadosDisponibles: List<OrderStatus>,
     onFiltroCambio: (OrderStatus) -> Unit,
     onCambiarEstadoOrden: (WorkOrderWithDetails, OrderStatus) -> Unit,
+    onEntregarEnTaller: (WorkOrderWithDetails) -> Unit,
     onAbrirDetalleOrden: (WorkOrderWithDetails) -> Unit,
     onCerrarDetalleOrden: () -> Unit,
     onAgregarManoDeObra: (WorkOrderWithDetails, String, String) -> Unit,
     onAgregarRefaccion: (WorkOrderWithDetails, String, String) -> Unit,
     onGuardarRecomendacionesYVin: (WorkOrderWithDetails, String, String) -> Unit
 ) {
-    val formatoMoneda = remember { NumberFormat.getCurrencyInstance(Locale("es", "MX")) }
+    val formatoMoneda = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-MX")) }
+    var ordenAEntregar by remember { mutableStateOf<WorkOrderWithDetails?>(null) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Tablero del Taller", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.taller_titulo), fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 )
@@ -89,7 +95,7 @@ fun PantallaTallerContenido(
                     FilterChip(
                         selected = estadoUi.filtroEstadoSeleccionado == estado,
                         onClick = { onFiltroCambio(estado) },
-                        label = { Text(formatearNombreEstado(estado)) },
+                        label = { Text(stringResource(estado.getLabelRes(plural = true))) },
                         modifier = Modifier.height(48.dp)
                     )
                 }
@@ -100,8 +106,9 @@ fun PantallaTallerContenido(
             // LISTA REACTIVA DE MOTOCICLETAS
             if (estadoUi.ordenesFiltradas.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    val estadoNombre = stringResource(estadoUi.filtroEstadoSeleccionado.getLabelRes(plural = true))
                     Text(
-                        text = "No hay motos en estado: ${formatearNombreEstado(estadoUi.filtroEstadoSeleccionado)}",
+                        text = stringResource(R.string.taller_vacio_estado, estadoNombre),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -120,11 +127,55 @@ fun PantallaTallerContenido(
                             onCambiarEstado = { nuevoEstado ->
                                 onCambiarEstadoOrden(ordenDetalle, nuevoEstado)
                             },
+                            onEntregarEnTaller = { ordenAEntregar = ordenDetalle },
                             onAbrirDetalle = { onAbrirDetalleOrden(ordenDetalle) }
                         )
                     }
                 }
             }
+        }
+
+        // CONFIRMACIÓN DE ENTREGA EN TALLER
+        ordenAEntregar?.let { ordenDetalle ->
+            val totalCobro = ordenDetalle.order.totalLaborCost + ordenDetalle.order.totalPartsCost
+            AlertDialog(
+                onDismissRequest = { ordenAEntregar = null },
+                icon = {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(36.dp)
+                    )
+                },
+                title = { Text(stringResource(R.string.taller_dialog_entregar_titulo), fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Folio: ${ordenDetalle.order.folio} • Cliente: ${ordenDetalle.client.name}")
+                        Text("Moto: ${ordenDetalle.motorcycle.brand} ${ordenDetalle.motorcycle.model}")
+                        Text("Total cobrado: ${formatoMoneda.format(totalCobro)}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            stringResource(R.string.taller_dialog_entregar_nota),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        onEntregarEnTaller(ordenDetalle)
+                        ordenAEntregar = null
+                    }) {
+                        Text(stringResource(R.string.taller_dialog_entregar_btn), fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { ordenAEntregar = null }) {
+                        Text(stringResource(R.string.btn_cancelar))
+                    }
+                }
+            )
         }
 
         // MODAL DE TRABAJO MECÁNICO, REFACCIONES Y VIN
@@ -152,6 +203,7 @@ fun TarjetaOrdenMecanico(
     ordenDetalle: WorkOrderWithDetails,
     formatoMoneda: NumberFormat,
     onCambiarEstado: (OrderStatus) -> Unit,
+    onEntregarEnTaller: () -> Unit,
     onAbrirDetalle: () -> Unit
 ) {
     val orden = ordenDetalle.order
@@ -194,8 +246,12 @@ fun TarjetaOrdenMecanico(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            val serviceTypeEnum = runCatching { ServiceType.valueOf(orden.serviceType) }.getOrNull()
+            val serviceLabel = if (serviceTypeEnum != null) stringResource(serviceTypeEnum.getLabelRes()) else orden.serviceType.replace("_", " ")
+
             Text(
-                text = "Servicio: ${orden.serviceType} | Falla: ${orden.reportedFailure}",
+                text = "Servicio: $serviceLabel | Falla: ${orden.reportedFailure}",
                 style = MaterialTheme.typography.bodyLarge
             )
             Text(
@@ -212,11 +268,13 @@ fun TarjetaOrdenMecanico(
                 OrderStatus.RECIBIDA.name -> {
                     Button(
                         onClick = { onCambiarEstado(OrderStatus.EN_PROCESO) },
-                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
                     ) {
                         Icon(Icons.Default.Build, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("COMENZAR TRABAJO", fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.taller_btn_comenzar), fontWeight = FontWeight.Bold)
                     }
                 }
                 OrderStatus.EN_PROCESO.name,
@@ -225,11 +283,13 @@ fun TarjetaOrdenMecanico(
                     // Botón para abrir hoja de captura de piezas/mano de obra
                     OutlinedButton(
                         onClick = onAbrirDetalle,
-                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("MANO DE OBRA, REFACCIONES Y VIN")
+                        Text(stringResource(R.string.taller_btn_abrir_hoja))
                     }
 
                     // Estados intermedios opcionales con un toque
@@ -240,17 +300,21 @@ fun TarjetaOrdenMecanico(
                         if (orden.status != OrderStatus.ESPERANDO_REFACCIONES.name) {
                             FilledTonalButton(
                                 onClick = { onCambiarEstado(OrderStatus.ESPERANDO_REFACCIONES) },
-                                modifier = Modifier.weight(1f).height(48.dp)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp)
                             ) {
-                                Text("Esp. Piezas")
+                                Text(stringResource(R.string.taller_btn_esp_piezas))
                             }
                         }
                         if (orden.status != OrderStatus.EN_PRUEBAS.name) {
                             FilledTonalButton(
                                 onClick = { onCambiarEstado(OrderStatus.EN_PRUEBAS) },
-                                modifier = Modifier.weight(1f).height(48.dp)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp)
                             ) {
-                                Text("En Pruebas")
+                                Text(stringResource(R.string.taller_btn_en_pruebas))
                             }
                         }
                     }
@@ -258,12 +322,77 @@ fun TarjetaOrdenMecanico(
                     // Salto directo a Lista para entrega
                     Button(
                         onClick = { onCambiarEstado(OrderStatus.LISTA_ENTREGA) },
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Icon(Icons.Default.CheckCircle, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("MARCAR LISTA PARA ENTREGA", fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.taller_btn_marcar_lista), fontWeight = FontWeight.Bold)
+                    }
+                }
+                OrderStatus.LISTA_ENTREGA.name -> {
+                    // MOTO LISTA: PERMITE ENTREGAR DIRECTAMENTE O VER DESTINO
+                    if (orden.deliveryType == DeliveryType.TALLER.name) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(Icons.Default.Storefront, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Text(
+                                    text = stringResource(R.string.taller_badge_recoger_mostrador),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                        Button(
+                            onClick = onEntregarEnTaller,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.taller_btn_entregar_directo), fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.DirectionsBike, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                                Text(
+                                    text = stringResource(R.string.taller_badge_esperando_repartidor),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = onEntregarEnTaller,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                        ) {
+                            Icon(Icons.Default.Handshake, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.taller_btn_entregar_si_paso))
+                        }
                     }
                 }
             }
@@ -300,25 +429,25 @@ fun ModalDetalleMecanico(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Hoja de Taller: ${ordenDetalle.motorcycle.brand} ${ordenDetalle.motorcycle.model}",
+                text = stringResource(R.string.taller_modal_titulo, ordenDetalle.motorcycle.brand, ordenDetalle.motorcycle.model),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
 
-            //EDICIÓN RÁPIDA DE VIN
+            // EDICIÓN RÁPIDA DE VIN
             OutlinedTextField(
                 value = vinMoto,
                 onValueChange = { vinMoto = it },
-                label = { Text("Número de Serie / VIN (Opcional)") },
+                label = { Text(stringResource(R.string.taller_modal_vin_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
 
             HorizontalDivider()
 
-            //MANO DE OBRA
-            Text("Mano de Obra Realizada", fontWeight = FontWeight.Bold)
+            // MANO DE OBRA
+            Text(stringResource(R.string.taller_modal_mano_obra_titulo), fontWeight = FontWeight.Bold)
             ordenDetalle.workItems.forEach { item ->
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                     Text("• ${item.description}")
@@ -329,14 +458,14 @@ fun ModalDetalleMecanico(
                 OutlinedTextField(
                     value = conceptoTrabajo,
                     onValueChange = { conceptoTrabajo = it },
-                    label = { Text("Concepto") },
+                    label = { Text(stringResource(R.string.taller_modal_label_concepto)) },
                     modifier = Modifier.weight(1.5f),
                     singleLine = true
                 )
                 OutlinedTextField(
                     value = costoTrabajo,
                     onValueChange = { costoTrabajo = it },
-                    label = { Text("$ MXN") },
+                    label = { Text(stringResource(R.string.taller_modal_label_costo_mxn)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
                     singleLine = true
@@ -355,8 +484,8 @@ fun ModalDetalleMecanico(
 
             HorizontalDivider()
 
-            //REFACCIONES
-            Text("Refacciones Utilizadas (A mano alzada)", fontWeight = FontWeight.Bold)
+            // REFACCIONES
+            Text(stringResource(R.string.taller_modal_refacciones_titulo), fontWeight = FontWeight.Bold)
             ordenDetalle.spareParts.forEach { part ->
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                     Text("• ${part.partName}")
@@ -367,14 +496,14 @@ fun ModalDetalleMecanico(
                 OutlinedTextField(
                     value = nombrePieza,
                     onValueChange = { nombrePieza = it },
-                    label = { Text("Pieza") },
+                    label = { Text(stringResource(R.string.taller_modal_label_pieza)) },
                     modifier = Modifier.weight(1.5f),
                     singleLine = true
                 )
                 OutlinedTextField(
                     value = costoPieza,
                     onValueChange = { costoPieza = it },
-                    label = { Text("$ MXN") },
+                    label = { Text(stringResource(R.string.taller_modal_label_costo_mxn)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
                     singleLine = true
@@ -397,10 +526,12 @@ fun ModalDetalleMecanico(
             OutlinedTextField(
                 value = recomendaciones,
                 onValueChange = { recomendaciones = it },
-                label = { Text("Recomendaciones técnicas para el cliente...") },
-                modifier = Modifier.fillMaxWidth().height(100.dp),
+                label = { Text(stringResource(R.string.taller_modal_label_recs)) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp),
                 trailingIcon = {
-                    IconButton(onClick = { /* Lanzar SpeechRecognizer */ }, modifier = Modifier.size(48.dp)) {
+                    IconButton(onClick = { /* SpeechRecognizer */ }, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Default.Mic, contentDescription = "Dictar recomendaciones", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
@@ -408,24 +539,15 @@ fun ModalDetalleMecanico(
 
             Button(
                 onClick = { onGuardarCambios(recomendaciones, vinMoto) },
-                modifier = Modifier.fillMaxWidth().height(54.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
             ) {
-                Text("GUARDAR Y CERRAR HOJA", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.taller_modal_btn_guardar), fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
-}
-
-private fun formatearNombreEstado(estado: OrderStatus): String = when (estado) {
-    OrderStatus.RECIBIDA -> "Pendientes"
-    OrderStatus.EN_PROCESO -> "En Proceso"
-    OrderStatus.ESPERANDO_REFACCIONES -> "Esp. Refacciones"
-    OrderStatus.EN_PRUEBAS -> "En Pruebas"
-    OrderStatus.LISTA_ENTREGA -> "Listas"
-    OrderStatus.EN_CAMINO -> "En Camino"
-    OrderStatus.ENTREGADA -> "Entregadas"
-    OrderStatus.CANCELADA -> "Canceladas"
 }
 
 @Preview(
@@ -443,7 +565,7 @@ fun PantallaTallerPreview() {
             motorcycleId = "m1",
             receivedByUserId = "u1",
             status = OrderStatus.EN_PROCESO.name,
-            serviceType = ServiceType.SERVICIO_GENERAL.name.takeIf { false } ?: "SERVICIO_GENERAL",
+            serviceType = ServiceType.SERVICIO_GENERAL.name,
             reportedFailure = "Ruido en punterías y cambio de aceite",
             deliveryType = DeliveryType.TALLER.name,
             totalLaborCost = 350.0,
@@ -478,6 +600,7 @@ fun PantallaTallerPreview() {
             ),
             onFiltroCambio = {},
             onCambiarEstadoOrden = { _, _ -> },
+            onEntregarEnTaller = {},
             onAbrirDetalleOrden = {},
             onCerrarDetalleOrden = {},
             onAgregarManoDeObra = { _, _, _ -> },
