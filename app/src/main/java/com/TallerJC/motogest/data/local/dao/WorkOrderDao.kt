@@ -48,7 +48,7 @@ interface WorkOrderDao {
     @Query("UPDATE motorcycles SET vin = :nuevoVin WHERE id = :motoId")
     suspend fun updateMotorcycleVin(motoId: String, nuevoVin: String)
 
-    //Evita el problema por llave fornánea
+    // Evita el problema por llave foránea
     @Transaction
     suspend fun insertarRecepcionCompleta(
         cliente: ClientEntity,
@@ -58,5 +58,14 @@ interface WorkOrderDao {
         insertClient(cliente)
         insertMotorcycle(moto)
         insertOrder(orden)
+    }
+
+    @Transaction
+    suspend fun actualizarEntregaYCliente(
+        orden: WorkOrderEntity,
+        cliente: ClientEntity
+    ) {
+        insertOrder(orden)
+        insertClient(cliente)
     }
 }

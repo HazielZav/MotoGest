@@ -18,6 +18,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.TallerJC.motogest.data.local.AppDatabase
 import com.TallerJC.motogest.data.repository.OperacionesRepository
+import com.TallerJC.motogest.ui.entregas.EntregasViewModel
+import com.TallerJC.motogest.ui.entregas.PantallaEntregas
 import com.TallerJC.motogest.ui.gerencia.GerenciaViewModel
 import com.TallerJC.motogest.ui.gerencia.PantallaGerencia
 import com.TallerJC.motogest.ui.navigation.Ruta
@@ -48,7 +50,7 @@ fun MotoGestApp(
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurface
             ) {
-                // La ruta acutal es pintada de naranja
+                // La ruta actual es pintada de naranja
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val rutaActual = navBackStackEntry?.destination?.route
 
@@ -94,11 +96,6 @@ fun MotoGestApp(
 
             // --- TALLER ---
             composable(Ruta.Taller.ruta) {
-                //Text(text = "Pantalla del Taller", color = MaterialTheme.colorScheme.onBackground)
-//                val context = LocalContext.current
-//                val database = remember { AppDatabase.getDatabase(context) }
-//                val operacionesRepository = remember { OperacionesRepository(database.workOrderDao()) }
-
                 val tallerViewModel: TallerViewModel = viewModel(
                     factory = TallerViewModel.provideFactory(operacionesRepository)
                 )
@@ -108,7 +105,10 @@ fun MotoGestApp(
 
             // --- ENTREGAS ---
             composable(Ruta.Entregas.ruta) {
-                Text(text = "Pantalla de Entregas", color = MaterialTheme.colorScheme.onBackground)
+                val entregasViewModel: EntregasViewModel = viewModel(
+                    factory = EntregasViewModel.provideFactory(operacionesRepository)
+                )
+                PantallaEntregas(viewModel = entregasViewModel)
             }
 
             // --- GERENCIA ---

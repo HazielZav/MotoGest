@@ -28,6 +28,7 @@ class OperacionesRepository(private val workOrderDao: WorkOrderDao) {
             status = nuevoEstado.name,
             startedAt = if (nuevoEstado == OrderStatus.EN_PROCESO && ordenActual.startedAt == null) ahora else ordenActual.startedAt,
             completedAt = if (nuevoEstado == OrderStatus.LISTA_ENTREGA) ahora else ordenActual.completedAt,
+            deliveredAt = if (nuevoEstado == OrderStatus.ENTREGADA) ahora else ordenActual.deliveredAt,
             updatedAt = ahora,
             isSynced = false
         )
@@ -68,5 +69,44 @@ class OperacionesRepository(private val workOrderDao: WorkOrderDao) {
                 updatedAt = System.currentTimeMillis()
             )
         )
+    }
+
+    suspend fun actualizarCostoEnvio(ordenActual: WorkOrderEntity, nuevoCostoEnvio: Double) {
+        val ahora = System.currentTimeMillis()
+        val nuevoTotal = ordenActual.totalLaborCost + ordenActual.totalPartsCost + nuevoCostoEnvio
+        val ordenActualizada = ordenActual.copy(
+            deliveryCost = nuevoCostoEnvio,
+            totalAmount = nuevoTotal,
+            updatedAt = ahora,
+            isSynced = false
+        )
+        workOrderDao.insertOrder(ordenActualizada)
+    }
+
+    suspend fun marcarOrdenEntregada(
+        ordenActual: WorkOrderEntity,
+        clienteActual: ClientEntity,
+        costoEnvioFinal: Double? = null
+    ) {
+        val ahora = System.currentTimeMillis()
+        val costoEnvio = costoEnvioFinal ?: ordenActual.deliveryCost
+        val nuevoTotal = ordenActual.totalLaborCost + ordenActual.totalPartsCost + costoEnvio
+
+        val ordenActualizada = ordenActual.copy(
+            status = OrderStatus.ENTREGADA.name,
+            deliveryCost = costoEnvio,
+            totalAmount = nuevoTotal,
+            deliveredAt = ahora,
+            updatedAt = ahora,
+            isSynced = false
+        )
+
+        // Actualizar el costo de envío habitual en la ficha del cliente en Room
+        val clienteActualizado = clienteActual.copy(
+            defaultDeliveryCost = costoEnvio,
+            isSynced = false
+        )
+
+        workOrderDao.actualizarEntregaYCliente(ordenActualizada, clienteActualizado)
     }
 }
