@@ -538,7 +538,19 @@ fun ModalDetalleMecanico(
             )
 
             Button(
-                onClick = { onGuardarCambios(recomendaciones, vinMoto) },
+                onClick = {
+                    if (conceptoTrabajo.isNotBlank() && costoTrabajo.isNotBlank()) {
+                        onAgregarManoObra(conceptoTrabajo, costoTrabajo)
+                        conceptoTrabajo = ""
+                        costoTrabajo = ""
+                    }
+                    if (nombrePieza.isNotBlank() && costoPieza.isNotBlank()) {
+                        onAgregarRefaccion(nombrePieza, costoPieza)
+                        nombrePieza = ""
+                        costoPieza = ""
+                    }
+                    onGuardarCambios(recomendaciones, vinMoto)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp)

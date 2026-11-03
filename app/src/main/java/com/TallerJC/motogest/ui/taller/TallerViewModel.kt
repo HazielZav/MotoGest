@@ -79,7 +79,8 @@ class TallerViewModel(
     }
 
     fun agregarTrabajoMecanico(ordenDetalle: WorkOrderWithDetails, concepto: String, costoTexto: String) {
-        val costo = costoTexto.toDoubleOrNull() ?: return
+        val limpio = costoTexto.replace("$", "").replace(",", ".").trim()
+        val costo = limpio.toDoubleOrNull() ?: return
         if (concepto.isBlank() || costo <= 0.0) return
         viewModelScope.launch(dispatcher) {
             repository.agregarManoDeObra(ordenDetalle.order, concepto.trim(), costo)
@@ -87,7 +88,8 @@ class TallerViewModel(
     }
 
     fun agregarRefaccion(ordenDetalle: WorkOrderWithDetails, pieza: String, costoTexto: String) {
-        val costo = costoTexto.toDoubleOrNull() ?: return
+        val limpio = costoTexto.replace("$", "").replace(",", ".").trim()
+        val costo = limpio.toDoubleOrNull() ?: return
         if (pieza.isBlank() || costo <= 0.0) return
         viewModelScope.launch(dispatcher) {
             repository.agregarRefaccion(ordenDetalle.order, pieza.trim(), costo)
