@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -779,7 +780,7 @@ fun PantallaRecepcionContenido(
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Icon(Icons.Default.ReceiptLong, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = stringResource(R.string.recepcion_btn_guardar),
