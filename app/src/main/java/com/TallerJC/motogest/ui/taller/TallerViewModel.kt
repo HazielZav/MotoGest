@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
+import com.TallerJC.motogest.data.repository.AuthRepository
 import com.TallerJC.motogest.data.repository.OperacionesRepository
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
@@ -14,7 +15,8 @@ import kotlinx.coroutines.launch
 
 class TallerViewModel(
     private val repository: OperacionesRepository,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.Main
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Main,
+    private val authRepository: AuthRepository? = null
 ) : ViewModel() {
 
     private val _filtroEstado = MutableStateFlow(OrderStatus.RECIBIDA)
@@ -58,7 +60,8 @@ class TallerViewModel(
 
     fun cambiarEstadoOrden(ordenDetalle: WorkOrderWithDetails, nuevoEstado: OrderStatus) {
         viewModelScope.launch(dispatcher) {
-            repository.cambiarEstadoOrden(ordenDetalle.order, nuevoEstado)
+            val mecanicoId = authRepository?.obtenerIdUsuarioActual()
+            repository.cambiarEstadoOrden(ordenDetalle.order, nuevoEstado, mecanicoId)
             // Cambiamos a la pestaña del nuevo estado o cerramos modal si ya está lista
             if (nuevoEstado == OrderStatus.LISTA_ENTREGA) {
                 _idOrdenSeleccionada.value = null
@@ -106,12 +109,13 @@ class TallerViewModel(
     companion object {
         fun provideFactory(
             repository: OperacionesRepository,
+            authRepository: AuthRepository? = null,
             dispatcher: CoroutineDispatcher = Dispatchers.Main
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return TallerViewModel(repository, dispatcher) as T
+                    return TallerViewModel(repository, dispatcher, authRepository) as T
                 }
             }
     }

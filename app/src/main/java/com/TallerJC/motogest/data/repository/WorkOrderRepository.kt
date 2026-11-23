@@ -29,7 +29,11 @@ interface WorkOrderRepository {
 
     suspend fun registrarMoto(moto: MotorcycleEntity)
 
-    suspend fun cambiarEstadoOrden(ordenActual: WorkOrderEntity, nuevoEstado: OrderStatus)
+    suspend fun cambiarEstadoOrden(
+        ordenActual: WorkOrderEntity,
+        nuevoEstado: OrderStatus,
+        mechanicUserId: String? = null
+    )
 
     suspend fun agregarManoDeObra(ordenActual: WorkOrderEntity, descripcion: String, costo: Double)
 

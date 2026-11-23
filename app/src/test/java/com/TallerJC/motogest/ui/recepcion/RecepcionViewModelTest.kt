@@ -4,13 +4,17 @@ import com.TallerJC.motogest.data.local.dao.WorkOrderDao
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
 import com.TallerJC.motogest.data.local.entity.SparePartEntity
+import com.TallerJC.motogest.data.local.entity.UserEntity
 import com.TallerJC.motogest.data.local.entity.WorkItemEntity
 import com.TallerJC.motogest.data.local.entity.WorkOrderEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
+import com.TallerJC.motogest.data.repository.AuthRepository
+import com.TallerJC.motogest.data.repository.AuthResult
 import com.TallerJC.motogest.data.repository.OperacionesRepository
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.domain.model.enums.UserRole
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -109,11 +113,12 @@ class RecepcionViewModelTest {
                 emitCurrent()
             }
         }
-        override suspend fun updateOrderStatus(orderId: String, status: String, startedAt: Long?, completedAt: Long?, deliveredAt: Long?, updatedAt: Long) {
+        override suspend fun updateOrderStatus(orderId: String, status: String, startedAt: Long?, completedAt: Long?, deliveredAt: Long?, updatedAt: Long, mechanicUserId: String?) {
             val idx = orders.indexOfFirst { it.id == orderId }
             if (idx != -1) {
                 orders[idx] = orders[idx].copy(
                     status = status,
+                    mechanicUserId = orders[idx].mechanicUserId ?: mechanicUserId,
                     startedAt = startedAt ?: orders[idx].startedAt,
                     completedAt = completedAt ?: orders[idx].completedAt,
                     deliveredAt = deliveredAt ?: orders[idx].deliveredAt,
@@ -164,6 +169,20 @@ class RecepcionViewModelTest {
                 motorcycles[idx] = motorcycles[idx].copy(isSynced = true)
                 emitCurrent()
             }
+        }
+    }
+
+    private fun crearAuthRepoFijo(userId: String? = "usr_recepcion_test"): AuthRepository {
+        val user = userId?.let {
+            UserEntity(it, "Recepcion Test", "rec@motogest.com", listOf(UserRole.RECEPCIONISTA.name))
+        }
+        return object : AuthRepository {
+            override val usuarioActual: Flow<UserEntity?> = flowOf(user)
+            override suspend fun inicializarSesionYAdmin(): UserEntity? = user
+            override suspend fun iniciarSesion(identificador: String, contrasena: String): AuthResult =
+                if (user != null) AuthResult.Exito(user) else AuthResult.Error("Sin usuario")
+            override fun cerrarSesion() {}
+            override fun obtenerIdUsuarioActual(): String? = userId
         }
     }
 
@@ -292,7 +311,7 @@ class RecepcionViewModelTest {
         fakeDao.insertClient(clienteExistente)
         fakeDao.insertMotorcycle(motoExistente)
 
-        val viewModel = RecepcionViewModel(repository, Dispatchers.Unconfined)
+        val viewModel = RecepcionViewModel(repository, Dispatchers.Unconfined, crearAuthRepoFijo("usr_recepcion_test"))
 
         // Al escribir 3 letras del nombre, se sugieren clientes coincidentes
         viewModel.actualizarNombreCliente("Ped")
@@ -327,6 +346,7 @@ class RecepcionViewModelTest {
         // La orden preserva el ID del cliente y de la moto existentes sin duplicarlos
         assertEquals(clienteExistente.id, ordenesCreadas.first().clientId)
         assertEquals(motoExistente.id, ordenesCreadas.first().motorcycleId)
+        assertEquals("usr_recepcion_test", ordenesCreadas.first().receivedByUserId)
     }
 
     @Test
@@ -397,5 +417,22 @@ class RecepcionViewModelTest {
         val motoEnDb = fakeDao.motorcycles.find { it.model == "Pulsar NS200" }
         assertNotNull(motoEnDb)
         assertEquals(cliente.id, motoEnDb?.clientId)
+    }
+
+    @Test
+    fun testGuardarOrdenRequiereSesionActivaSinUsuarioFalso() = runBlocking {
+        val viewModel = RecepcionViewModel(repository, Dispatchers.Unconfined, crearAuthRepoFijo(null))
+
+        viewModel.actualizarNombreCliente("Cliente Real")
+        viewModel.actualizarTelefonoCliente("4451234567")
+        viewModel.actualizarMarcaMoto("Honda")
+        viewModel.actualizarModeloMoto("Cargo 150")
+        viewModel.actualizarColorMoto("Blanco")
+        viewModel.actualizarFallaReportada("Cambio de aceite")
+        viewModel.guardarOrden()
+
+        assertFalse(viewModel.estadoUi.value.ordenGuardadaConExito)
+        assertNotNull(viewModel.estadoUi.value.mensajeError)
+        assertEquals(0, fakeDao.orders.size)
     }
 }

@@ -209,7 +209,6 @@
     <string name="gerencia_vacio_titulo">No hay órdenes registradas en este periodo</string>
     <string name="gerencia_vacio_busqueda">No se encontraron resultados para \"%1$s\"</string>
     <string name="gerencia_vacio_sugerencia">Intenta seleccionar otro periodo o cambiar el criterio de búsqueda.</string>
-    <string name="gerencia_btn_cargar_demo">Cargar datos de ejemplo</string>
     <string name="gerencia_dialog_fecha_titulo">Seleccionar Rango de Consulta</string>
     <string name="gerencia_dialog_fecha_btn_aplicar">Aplicar Rango</string>
     <string name="gerencia_dialog_detalle_titulo">Detalle de la Orden: %1$s</string>
@@ -236,6 +235,8 @@
     <string name="gerencia_personal_dialog_editar_titulo">Modificar Empleado</string>
     <string name="gerencia_personal_label_nombre">Nombre completo*</string>
     <string name="gerencia_personal_label_correo">Correo electrónico*</string>
+    <string name="gerencia_personal_label_contrasena">Contraseña*</string>
+    <string name="gerencia_personal_label_contrasena_opcional">Nueva contraseña (opcional)</string>
     <string name="gerencia_personal_label_roles">Rol asignado* (selecciona una opción)</string>
     <string name="gerencia_personal_label_activo">Cuenta activa (permitir acceso)</string>
     <string name="gerencia_personal_btn_guardar">Guardar Empleado</string>
@@ -245,5 +246,18 @@
     <string name="gerencia_personal_btn_guardar_roles">Guardar Rol</string>
     <string name="gerencia_personal_dialog_eliminar_titulo">¿Eliminar empleado?</string>
     <string name="gerencia_personal_dialog_eliminar_mensaje">Se eliminará a %1$s (%2$s) del directorio de personal. Si solo deseas suspender su acceso, puedes desactivar su cuenta.</string>
-    <string name="gerencia_personal_btn_sincronizar">Sincronizar</string>
+
+    <!-- Splash, Login y Sesión -->
+    <string name="splash_subtitulo">Gestión integral de taller de motocicletas</string>
+    <string name="login_subtitulo">Inicia sesión con tu cuenta de empleado</string>
+    <string name="login_label_usuario">Usuario o correo</string>
+    <string name="login_label_contrasena">Contraseña</string>
+    <string name="login_btn_entrar">Iniciar Sesión</string>
+    <string name="auth_sesion_usuario">Sesión: %1$s</string>
+    <string name="auth_btn_cerrar_sesion">Cerrar sesión</string>
+    <string name="auth_dialog_salir_titulo">¿Cerrar sesión?</string>
+    <string name="auth_dialog_salir_mensaje">Se cerrará tu sesión actual y volverás a la pantalla de inicio de sesión.</string>
+    <string name="auth_sin_permisos_mensaje">Tu cuenta no tiene roles asignados para acceder a los módulos.</string>
+    <string name="recepcion_dictado_proximamente">Dictado por voz próximamente</string>
+    <string name="recepcion_foto_proximamente">Captura de fotos próximamente</string>
 </resources>

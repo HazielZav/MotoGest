@@ -17,8 +17,14 @@ interface UserDao {
     @Query("SELECT * FROM users WHERE id = :userId")
     suspend fun getUserById(userId: String): UserEntity?
 
+    @Query("SELECT * FROM users WHERE id = :userId")
+    fun observeUserById(userId: String): Flow<UserEntity?>
+
     @Query("SELECT * FROM users WHERE LOWER(email) = LOWER(:email) LIMIT 1")
     suspend fun getUserByEmail(email: String): UserEntity?
+
+    @Query("SELECT * FROM users WHERE LOWER(fullName) = LOWER(:fullName) LIMIT 1")
+    suspend fun getUserByFullName(fullName: String): UserEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUser(user: UserEntity)

@@ -34,17 +34,17 @@ class GerenciaViewModelTest {
             override fun obtenerHistorialMoto(motorcycleId: String): Flow<List<WorkOrderWithDetails>> = flowOf(ordenes.filter { it.motorcycle.id == motorcycleId })
             override fun obtenerHistorialCliente(clientId: String): Flow<List<WorkOrderWithDetails>> = flowOf(ordenes.filter { it.client.id == clientId })
             override fun obtenerEmpleados(): Flow<List<UserEntity>> = empleadosFlow
-            override suspend fun guardarEmpleado(empleado: UserEntity) {
+            override suspend fun guardarEmpleado(empleado: UserEntity, nuevaContrasena: String?) {
                 val actual = empleadosFlow.value.toMutableList()
                 val idx = actual.indexOfFirst { it.id == empleado.id }
-                if (idx != -1) actual[idx] = empleado else actual.add(empleado)
+                val guardado = if (!nuevaContrasena.isNullOrBlank()) empleado.copy(password = nuevaContrasena) else empleado
+                if (idx != -1) actual[idx] = guardado else actual.add(guardado)
                 empleadosFlow.value = actual
             }
             override suspend fun eliminarEmpleado(userId: String) {
                 empleadosFlow.value = empleadosFlow.value.filterNot { it.id == userId }
             }
             override suspend fun sincronizarEmpleados(): Boolean = true
-            override suspend fun insertarDatosDemo() {}
         }
     }
 
@@ -251,8 +251,13 @@ class GerenciaViewModelTest {
         viewModel.guardarEmpleadoFormulario()
         assertNotNull(viewModel.estadoUi.value.errorFormularioEmpleado)
 
-        // Selección única de rol (reemplaza el rol anterior al elegir otro)
+        // Validación contraseña requerida al registrar
         viewModel.actualizarFormEmpleadoCorreo("carlos@motogest.com")
+        viewModel.guardarEmpleadoFormulario()
+        assertNotNull(viewModel.estadoUi.value.errorFormularioEmpleado)
+
+        // Selección única de rol y contraseña válida
+        viewModel.actualizarFormEmpleadoContrasena("1234")
         viewModel.toggleFormEmpleadoRol(UserRole.REPARTIDOR)
         assertEquals(setOf(UserRole.REPARTIDOR), viewModel.estadoUi.value.formEmpleadoRoles)
         viewModel.guardarEmpleadoFormulario()
@@ -353,5 +358,32 @@ class GerenciaViewModelTest {
         viewModel.confirmarEliminarEmpleado()
         assertNull(viewModel.estadoUi.value.empleadoAEliminar)
         assertEquals(1, viewModel.estadoUi.value.empleados.size)
+    }
+
+    @Test
+    fun testProtegerAdminPrincipalContraEliminacionYDesactivacion() = runBlocking {
+        val admin = UserEntity(
+            id = "admin-motogest",
+            fullName = "admin",
+            email = "admin@gmail.com",
+            roles = UserRole.entries.map { it.name },
+            isActive = true,
+            password = "hash"
+        )
+        val viewModel = GerenciaViewModel(crearMockRepository(emptyList(), listOf(admin)), Dispatchers.Unconfined)
+
+        viewModel.toggleEstadoActivoEmpleado(admin)
+        assertTrue(viewModel.estadoUi.value.empleados.first().isActive)
+
+        viewModel.solicitarEliminarEmpleado(admin)
+        assertNull(viewModel.estadoUi.value.empleadoAEliminar)
+
+        viewModel.abrirDialogoEditarEmpleado(admin)
+        viewModel.actualizarFormEmpleadoNombre("admin principal")
+        viewModel.guardarEmpleadoFormulario()
+        val adminEditado = viewModel.estadoUi.value.empleados.first()
+        assertEquals("admin principal", adminEditado.fullName)
+        assertEquals(UserRole.entries.map { it.name }, adminEditado.roles)
+        assertTrue(adminEditado.isActive)
     }
 }

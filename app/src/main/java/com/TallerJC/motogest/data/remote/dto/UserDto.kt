@@ -7,5 +7,6 @@ data class UserDto(
     @SerializedName("fullName") val fullName: String,
     @SerializedName("email") val email: String,
     @SerializedName("roles") val roles: List<String> = emptyList(),
-    @SerializedName("isActive") val isActive: Boolean = true
+    @SerializedName("isActive") val isActive: Boolean = true,
+    @SerializedName("password") val password: String = ""
 )

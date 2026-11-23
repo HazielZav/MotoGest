@@ -1,6 +1,7 @@
 package com.TallerJC.motogest.ui.recepcion
 
 import android.content.res.Configuration
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -22,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -83,7 +85,7 @@ fun PantallaRecepcion(
         onVinCambio = viewModel::actualizarVin,
         onServicioSeleccionado = viewModel::seleccionarServicio,
         onFallaCambio = viewModel::actualizarFallaReportada,
-        onAgregarFoto = viewModel::agregarFotoEvidenciaSimulada,
+        onAgregarFoto = {},
         onNotasDanosCambio = viewModel::actualizarNotasDanos,
         onModalidadCambio = viewModel::cambiarModalidadEntrega,
         onDescartarAlertaDomicilio = viewModel::descartarAlertaDomicilio,
@@ -156,6 +158,9 @@ fun PantallaRecepcionContenido(
 ) {
     val scrollState = rememberScrollState()
     val formatoMoneda = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-MX")) }
+    val context = LocalContext.current
+    val dictadoMsg = stringResource(R.string.recepcion_dictado_proximamente)
+    val fotoProxMsg = stringResource(R.string.recepcion_foto_proximamente)
 
     Scaffold(
         topBar = {
@@ -688,7 +693,7 @@ fun PantallaRecepcionContenido(
                         label = { Text(stringResource(R.string.recepcion_label_falla)) },
                         trailingIcon = {
                             IconButton(onClick = {
-                                onFallaCambio(if (estadoUi.fallaReportada.isBlank()) "Cliente reporta ruido en motor y freno trasero bajo." else "${estadoUi.fallaReportada} Revisión general.")
+                                Toast.makeText(context, dictadoMsg, Toast.LENGTH_SHORT).show()
                             }) {
                                 Icon(Icons.Default.Mic, contentDescription = stringResource(R.string.recepcion_desc_dictado), tint = MaterialTheme.colorScheme.primary)
                             }
@@ -710,7 +715,10 @@ fun PantallaRecepcionContenido(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         TextButton(
-                            onClick = onAgregarFoto,
+                            onClick = {
+                                onAgregarFoto()
+                                Toast.makeText(context, fotoProxMsg, Toast.LENGTH_SHORT).show()
+                            },
                             enabled = estadoUi.fotosEvidencia.size < 5
                         ) {
                             Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -1060,17 +1068,16 @@ fun PantallaRecepcionContenido(
                                 singleLine = true
                             )
                         }
-                        // Botón de captura / simulación de foto
                         OutlinedButton(
                             onClick = {
-                                onNuevaMotoFotoCambio("file://moto_${System.currentTimeMillis()}.jpg")
+                                Toast.makeText(context, fotoProxMsg, Toast.LENGTH_SHORT).show()
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                if (estadoUi.nuevaMotoFotoUri.startsWith("file://"))
+                                if (estadoUi.nuevaMotoFotoUri.isNotBlank())
                                     stringResource(R.string.recepcion_foto_capturada)
                                 else
                                     stringResource(R.string.recepcion_foto_tomar)

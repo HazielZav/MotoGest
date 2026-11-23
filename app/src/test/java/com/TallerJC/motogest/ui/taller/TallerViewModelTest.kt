@@ -4,13 +4,17 @@ import com.TallerJC.motogest.data.local.dao.WorkOrderDao
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
 import com.TallerJC.motogest.data.local.entity.SparePartEntity
+import com.TallerJC.motogest.data.local.entity.UserEntity
 import com.TallerJC.motogest.data.local.entity.WorkItemEntity
 import com.TallerJC.motogest.data.local.entity.WorkOrderEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
+import com.TallerJC.motogest.data.repository.AuthRepository
+import com.TallerJC.motogest.data.repository.AuthResult
 import com.TallerJC.motogest.data.repository.OperacionesRepository
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.domain.model.enums.UserRole
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -118,11 +122,12 @@ class TallerViewModelTest {
                 emitCurrent()
             }
         }
-        override suspend fun updateOrderStatus(orderId: String, status: String, startedAt: Long?, completedAt: Long?, deliveredAt: Long?, updatedAt: Long) {
+        override suspend fun updateOrderStatus(orderId: String, status: String, startedAt: Long?, completedAt: Long?, deliveredAt: Long?, updatedAt: Long, mechanicUserId: String?) {
             val idx = orders.indexOfFirst { it.id == orderId }
             if (idx != -1) {
                 orders[idx] = orders[idx].copy(
                     status = status,
+                    mechanicUserId = orders[idx].mechanicUserId ?: mechanicUserId,
                     startedAt = startedAt ?: orders[idx].startedAt,
                     completedAt = completedAt ?: orders[idx].completedAt,
                     deliveredAt = deliveredAt ?: orders[idx].deliveredAt,
@@ -215,12 +220,21 @@ class TallerViewModelTest {
 
     @Test
     fun testTransicionDeEstadosTaller() = runBlocking {
+        val authRepo = object : AuthRepository {
+            val user = UserEntity("usr_mecanico_test", "Mecánico Test", "mec@motogest.com", listOf(UserRole.MECANICO.name))
+            override val usuarioActual: Flow<UserEntity?> = flowOf(user)
+            override suspend fun inicializarSesionYAdmin(): UserEntity? = user
+            override suspend fun iniciarSesion(identificador: String, contrasena: String): AuthResult = AuthResult.Exito(user)
+            override fun cerrarSesion() {}
+            override fun obtenerIdUsuarioActual(): String = user.id
+        }
         val detalle = crearOrdenPrueba("1", "ORD-101", OrderStatus.RECIBIDA)
-        val viewModel = TallerViewModel(repository, Dispatchers.Unconfined)
+        val viewModel = TallerViewModel(repository, Dispatchers.Unconfined, authRepo)
 
         viewModel.cambiarEstadoOrden(detalle, OrderStatus.EN_PROCESO)
         var ordenDb = fakeDao.getOrderById("1")
         assertEquals(OrderStatus.EN_PROCESO.name, ordenDb?.status)
+        assertEquals("usr_mecanico_test", ordenDb?.mechanicUserId)
         assertNotNull(ordenDb?.startedAt)
 
         viewModel.cambiarEstadoOrden(detalle.copy(order = ordenDb!!), OrderStatus.LISTA_ENTREGA)

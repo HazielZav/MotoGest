@@ -7,6 +7,7 @@ import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
 import com.TallerJC.motogest.data.local.entity.WorkOrderEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
+import com.TallerJC.motogest.data.repository.AuthRepository
 import com.TallerJC.motogest.data.repository.OperacionesRepository
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
@@ -23,7 +24,8 @@ import java.util.UUID
 
 class RecepcionViewModel(
     private val repository: OperacionesRepository,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.Main
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Main,
+    private val authRepository: AuthRepository? = null
 ) : ViewModel() {
 
     private val _estadoUi = MutableStateFlow(RecepcionUiState())
@@ -241,7 +243,7 @@ class RecepcionViewModel(
                 nuevaMotoPlaca = "",
                 nuevaMotoAnio = "",
                 nuevaMotoVin = "",
-                nuevaMotoFotoUri = "local://moto_${System.currentTimeMillis()}.jpg",
+                nuevaMotoFotoUri = "",
                 errorNuevaMoto = null
             )
         }
@@ -325,7 +327,7 @@ class RecepcionViewModel(
                 placaOpcional = "",
                 anioOpcional = "",
                 vinOpcional = "",
-                fotoMotoUri = "local://moto_default.jpg"
+                fotoMotoUri = ""
             )
         }
     }
@@ -376,11 +378,11 @@ class RecepcionViewModel(
         }
     }
 
-    fun agregarFotoEvidenciaSimulada() {
+    fun agregarFotoEvidencia(uri: String) {
+        if (uri.isBlank()) return
         _estadoUi.update { actual ->
             if (actual.fotosEvidencia.size < 5) {
-                val nuevaFoto = "file://evidencia_${actual.fotosEvidencia.size + 1}.jpg"
-                actual.copy(fotosEvidencia = actual.fotosEvidencia + nuevaFoto)
+                actual.copy(fotosEvidencia = actual.fotosEvidencia + uri)
             } else actual
         }
     }
@@ -464,6 +466,12 @@ class RecepcionViewModel(
             return
         }
 
+        val usuarioId = authRepository?.obtenerIdUsuarioActual()
+        if (usuarioId.isNullOrBlank()) {
+            _estadoUi.update { it.copy(mensajeError = "No hay una sesión de usuario activa.") }
+            return
+        }
+
         viewModelScope.launch(dispatcher) {
             val ahora = System.currentTimeMillis()
             val idOrden = UUID.randomUUID().toString()
@@ -472,7 +480,7 @@ class RecepcionViewModel(
                 folio = "ORD-${ahora.toString().takeLast(5)}",
                 clientId = clienteEntity.id,
                 motorcycleId = motoEntity.id,
-                receivedByUserId = "EMP-RECEPCION-01",
+                receivedByUserId = usuarioId,
                 mechanicUserId = null,
                 status = OrderStatus.RECIBIDA.name,
                 serviceType = actual.servicioSeleccionado.name,
@@ -591,12 +599,13 @@ class RecepcionViewModel(
     companion object {
         fun provideFactory(
             repository: OperacionesRepository,
+            authRepository: AuthRepository? = null,
             dispatcher: CoroutineDispatcher = Dispatchers.Main
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return RecepcionViewModel(repository, dispatcher) as T
+                    return RecepcionViewModel(repository, dispatcher, authRepository) as T
                 }
             }
     }

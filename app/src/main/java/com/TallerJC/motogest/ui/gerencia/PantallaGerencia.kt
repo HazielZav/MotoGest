@@ -60,7 +60,6 @@ fun PantallaGerencia(
         onRangoPersonalizadoSeleccionado = viewModel::establecerRangoPersonalizado,
         onCerrarDialogoFecha = viewModel::cerrarDialogoFecha,
         onReintentar = viewModel::cargarDatos,
-        onCargarDemo = viewModel::cargarDatosDemo,
         onAbrirDetalleOrden = viewModel::abrirDetalleOrden,
         onCerrarDetalleOrden = viewModel::cerrarDetalleOrden,
         onVerHistorialMoto = viewModel::verHistorialMoto,
@@ -72,6 +71,7 @@ fun PantallaGerencia(
         onCerrarDialogoEmpleado = viewModel::cerrarDialogoEmpleado,
         onFormNombreCambio = viewModel::actualizarFormEmpleadoNombre,
         onFormCorreoCambio = viewModel::actualizarFormEmpleadoCorreo,
+        onFormContrasenaCambio = viewModel::actualizarFormEmpleadoContrasena,
         onFormToggleRol = viewModel::toggleFormEmpleadoRol,
         onFormActivoCambio = viewModel::actualizarFormEmpleadoActivo,
         onGuardarEmpleado = viewModel::guardarEmpleadoFormulario,
@@ -98,7 +98,6 @@ fun PantallaGerencia(
     onRangoPersonalizadoSeleccionado: (Long, Long) -> Unit,
     onCerrarDialogoFecha: () -> Unit,
     onReintentar: () -> Unit,
-    onCargarDemo: () -> Unit = {},
     onPestanaCambio: (Int) -> Unit = {},
     onBuscarDirectorioCambio: (String) -> Unit = {},
     onAbrirDetalleOrden: (WorkOrderWithDetails) -> Unit = {},
@@ -112,6 +111,7 @@ fun PantallaGerencia(
     onCerrarDialogoEmpleado: () -> Unit = {},
     onFormNombreCambio: (String) -> Unit = {},
     onFormCorreoCambio: (String) -> Unit = {},
+    onFormContrasenaCambio: (String) -> Unit = {},
     onFormToggleRol: (com.TallerJC.motogest.domain.model.enums.UserRole) -> Unit = {},
     onFormActivoCambio: (Boolean) -> Unit = {},
     onGuardarEmpleado: () -> Unit = {},
@@ -548,17 +548,6 @@ fun PantallaGerencia(
                                             fontSize = 12.sp,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
-                                        if (estadoUi.textoBusqueda.isEmpty()) {
-                                            Spacer(modifier = Modifier.height(16.dp))
-                                            Button(
-                                                onClick = onCargarDemo,
-                                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                                            ) {
-                                                Icon(Icons.Filled.CloudDownload, contentDescription = null)
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text(stringResource(R.string.gerencia_btn_cargar_demo), fontWeight = FontWeight.Bold)
-                                            }
-                                        }
                                     }
                                 }
                             }
@@ -842,6 +831,7 @@ fun PantallaGerencia(
                 estadoUi = estadoUi,
                 onNombreCambio = onFormNombreCambio,
                 onCorreoCambio = onFormCorreoCambio,
+                onContrasenaCambio = onFormContrasenaCambio,
                 onToggleRol = onFormToggleRol,
                 onActivoCambio = onFormActivoCambio,
                 onGuardar = onGuardarEmpleado,
@@ -966,8 +956,7 @@ fun PantallaGerenciaPreview() {
             onBuscarCambio = {},
             onRangoPersonalizadoSeleccionado = { _, _ -> },
             onCerrarDialogoFecha = {},
-            onReintentar = {},
-            onCargarDemo = {}
+            onReintentar = {}
         )
     }
 }

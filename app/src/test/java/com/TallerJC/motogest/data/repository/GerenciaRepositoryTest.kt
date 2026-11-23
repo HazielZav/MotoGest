@@ -7,11 +7,13 @@ import com.TallerJC.motogest.data.remote.dto.ClientDto
 import com.TallerJC.motogest.data.remote.dto.MotorcycleDto
 import com.TallerJC.motogest.data.remote.dto.UserDto
 import com.TallerJC.motogest.data.remote.dto.WorkOrderDto
+import com.TallerJC.motogest.data.security.PasswordHasher
 import com.TallerJC.motogest.domain.model.enums.UserRole
 import com.TallerJC.motogest.fake.FakeWorkOrderDao
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -31,8 +33,14 @@ class GerenciaRepositoryTest {
 
         override suspend fun getUserById(userId: String): UserEntity? = users.find { it.id == userId }
 
+        override fun observeUserById(userId: String): Flow<UserEntity?> =
+            flow.map { list -> list.find { it.id == userId } }
+
         override suspend fun getUserByEmail(email: String): UserEntity? =
             users.find { it.email.equals(email, ignoreCase = true) }
+
+        override suspend fun getUserByFullName(fullName: String): UserEntity? =
+            users.find { it.fullName.equals(fullName, ignoreCase = true) }
 
         override suspend fun insertUser(user: UserEntity) {
             val idx = users.indexOfFirst { it.id == user.id }
@@ -91,16 +99,19 @@ class GerenciaRepositoryTest {
         assertTrue(repo.sincronizarEmpleados())
         assertEquals(1, repo.obtenerEmpleados().first().size)
 
-        // Guardar nuevo empleado
+        // Guardar nuevo empleado con contraseña
         val nuevo = UserEntity("u_local", "Jorge Mecánico", "jorge@motogest.com", listOf(UserRole.MECANICO.name), true)
-        repo.guardarEmpleado(nuevo)
+        repo.guardarEmpleado(nuevo, "clave123")
         assertEquals(2, repo.obtenerEmpleados().first().size)
         assertEquals(2, remote.fetchUsers().size)
+        val guardado = repo.obtenerEmpleados().first().first { it.id == "u_local" }
+        assertTrue(PasswordHasher.matches("clave123", guardado.password))
 
-        // Modificar roles
-        repo.guardarEmpleado(nuevo.copy(roles = listOf(UserRole.MECANICO.name, UserRole.REPARTIDOR.name)))
+        // Modificar roles preservando contraseña
+        repo.guardarEmpleado(guardado.copy(roles = listOf(UserRole.MECANICO.name, UserRole.REPARTIDOR.name)))
         val actualizado = repo.obtenerEmpleados().first().first { it.id == "u_local" }
         assertEquals(2, actualizado.roles.size)
+        assertTrue(PasswordHasher.matches("clave123", actualizado.password))
 
         // Eliminar empleado
         repo.eliminarEmpleado("u_local")

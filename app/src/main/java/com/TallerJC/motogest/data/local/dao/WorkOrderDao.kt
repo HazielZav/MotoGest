@@ -106,14 +106,15 @@ interface WorkOrderDao {
     @Query("UPDATE work_orders SET recommendations = :recommendations, updatedAt = :updatedAt WHERE id = :orderId")
     suspend fun updateRecommendations(orderId: String, recommendations: String, updatedAt: Long = System.currentTimeMillis())
 
-    @Query("UPDATE work_orders SET status = :status, startedAt = CASE WHEN :startedAt IS NOT NULL AND startedAt IS NULL THEN :startedAt ELSE startedAt END, completedAt = CASE WHEN :completedAt IS NOT NULL THEN :completedAt ELSE completedAt END, deliveredAt = CASE WHEN :deliveredAt IS NOT NULL THEN :deliveredAt ELSE deliveredAt END, updatedAt = :updatedAt WHERE id = :orderId")
+    @Query("UPDATE work_orders SET status = :status, mechanicUserId = CASE WHEN :mechanicUserId IS NOT NULL AND mechanicUserId IS NULL THEN :mechanicUserId ELSE mechanicUserId END, startedAt = CASE WHEN :startedAt IS NOT NULL AND startedAt IS NULL THEN :startedAt ELSE startedAt END, completedAt = CASE WHEN :completedAt IS NOT NULL THEN :completedAt ELSE completedAt END, deliveredAt = CASE WHEN :deliveredAt IS NOT NULL THEN :deliveredAt ELSE deliveredAt END, updatedAt = :updatedAt WHERE id = :orderId")
     suspend fun updateOrderStatus(
         orderId: String,
         status: String,
         startedAt: Long? = null,
         completedAt: Long? = null,
         deliveredAt: Long? = null,
-        updatedAt: Long = System.currentTimeMillis()
+        updatedAt: Long = System.currentTimeMillis(),
+        mechanicUserId: String? = null
     )
 
     @Query("UPDATE clients SET defaultDeliveryCost = :cost WHERE id = :clientId")

@@ -44,7 +44,7 @@ data class RecepcionUiState(
     val nuevaMotoPlaca: String = "",
     val nuevaMotoAnio: String = "",
     val nuevaMotoVin: String = "",
-    val nuevaMotoFotoUri: String = "local://moto_default.jpg",
+    val nuevaMotoFotoUri: String = "",
     val errorNuevaMoto: String? = null,
 
     // Datos de la Moto activa
@@ -54,7 +54,7 @@ data class RecepcionUiState(
     val placaOpcional: String = "",
     val anioOpcional: String = "",
     val vinOpcional: String = "",
-    val fotoMotoUri: String = "local://moto_default.jpg",
+    val fotoMotoUri: String = "",
 
     // Orden de trabajo
     val servicioSeleccionado: ServiceType = ServiceType.SERVICIO_GENERAL,

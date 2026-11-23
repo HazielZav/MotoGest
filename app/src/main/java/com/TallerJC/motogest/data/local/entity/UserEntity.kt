@@ -10,5 +10,6 @@ data class UserEntity(
     val fullName: String,
     val email: String,
     val roles: List<String>,
-    val isActive: Boolean = true
+    val isActive: Boolean = true,
+    val password: String = ""
 )

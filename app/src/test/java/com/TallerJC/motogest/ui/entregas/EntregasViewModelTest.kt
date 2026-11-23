@@ -109,11 +109,12 @@ class EntregasViewModelTest {
                 emitCurrent()
             }
         }
-        override suspend fun updateOrderStatus(orderId: String, status: String, startedAt: Long?, completedAt: Long?, deliveredAt: Long?, updatedAt: Long) {
+        override suspend fun updateOrderStatus(orderId: String, status: String, startedAt: Long?, completedAt: Long?, deliveredAt: Long?, updatedAt: Long, mechanicUserId: String?) {
             val idx = orders.indexOfFirst { it.id == orderId }
             if (idx != -1) {
                 orders[idx] = orders[idx].copy(
                     status = status,
+                    mechanicUserId = orders[idx].mechanicUserId ?: mechanicUserId,
                     startedAt = startedAt ?: orders[idx].startedAt,
                     completedAt = completedAt ?: orders[idx].completedAt,
                     deliveredAt = deliveredAt ?: orders[idx].deliveredAt,

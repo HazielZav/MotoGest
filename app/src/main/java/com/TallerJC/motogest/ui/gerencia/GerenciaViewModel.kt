@@ -87,22 +87,6 @@ class GerenciaViewModel(
         }
     }
 
-    fun cargarDatosDemo() {
-        viewModelScope.launch(dispatcher) {
-            _estadoUi.update { it.copy(isLoading = true, error = null) }
-            try {
-                repository.insertarDatosDemo()
-            } catch (ex: Exception) {
-                _estadoUi.update {
-                    it.copy(
-                        isLoading = false,
-                        error = "No se pudieron insertar los datos demo: ${ex.message}"
-                    )
-                }
-            }
-        }
-    }
-
     fun cambiarPestana(indice: Int) {
         _estadoUi.update { it.copy(pestanaSeleccionada = indice) }
     }
@@ -208,6 +192,7 @@ class GerenciaViewModel(
                 empleadoEnEdicion = null,
                 formEmpleadoNombre = "",
                 formEmpleadoCorreo = "",
+                formEmpleadoContrasena = "",
                 formEmpleadoRoles = setOf(UserRole.MECANICO),
                 formEmpleadoActivo = true,
                 errorFormularioEmpleado = null,
@@ -223,6 +208,7 @@ class GerenciaViewModel(
                 empleadoEnEdicion = empleado,
                 formEmpleadoNombre = empleado.fullName,
                 formEmpleadoCorreo = empleado.email,
+                formEmpleadoContrasena = "",
                 formEmpleadoRoles = parseRoles(empleado.roles),
                 formEmpleadoActivo = empleado.isActive,
                 errorFormularioEmpleado = null,
@@ -236,6 +222,7 @@ class GerenciaViewModel(
             it.copy(
                 mostrarDialogoEmpleado = false,
                 empleadoEnEdicion = null,
+                formEmpleadoContrasena = "",
                 errorFormularioEmpleado = null
             )
         }
@@ -247,6 +234,10 @@ class GerenciaViewModel(
 
     fun actualizarFormEmpleadoCorreo(correo: String) {
         _estadoUi.update { it.copy(formEmpleadoCorreo = correo, errorFormularioEmpleado = null) }
+    }
+
+    fun actualizarFormEmpleadoContrasena(contrasena: String) {
+        _estadoUi.update { it.copy(formEmpleadoContrasena = contrasena, errorFormularioEmpleado = null) }
     }
 
     fun toggleFormEmpleadoRol(rol: UserRole) {
@@ -266,6 +257,8 @@ class GerenciaViewModel(
         val estado = _estadoUi.value
         val nombre = estado.formEmpleadoNombre.trim()
         val correo = estado.formEmpleadoCorreo.trim()
+        val contrasena = estado.formEmpleadoContrasena.trim()
+        val esAdminPrincipal = estado.empleadoEnEdicion?.email.equals(ADMIN_EMAIL, ignoreCase = true)
         val roles = estado.formEmpleadoRoles
 
         val errorValidacion = when {
@@ -275,7 +268,11 @@ class GerenciaViewModel(
             todosLosEmpleados.any {
                 it.id != estado.empleadoEnEdicion?.id && it.email.equals(correo, ignoreCase = true)
             } -> "Ya existe un empleado registrado con ese correo."
-            roles.isEmpty() -> "Selecciona al menos un rol para el empleado."
+            estado.empleadoEnEdicion == null && contrasena.length < 4 ->
+                "La contraseña debe tener al menos 4 caracteres."
+            estado.empleadoEnEdicion != null && contrasena.isNotEmpty() && contrasena.length < 4 ->
+                "La contraseña debe tener al menos 4 caracteres."
+            roles.isEmpty() -> "Selecciona un rol para el empleado."
             else -> null
         }
 
@@ -284,32 +281,39 @@ class GerenciaViewModel(
             return
         }
 
-        val rolesOrdenados = serializeRoles(roles)
+        val rolesFinales = if (esAdminPrincipal) {
+            UserRole.entries.map { it.name }
+        } else {
+            serializeRoles(roles)
+        }
+        val activoFinal = if (esAdminPrincipal) true else estado.formEmpleadoActivo
+
         val empleadoGuardar = if (estado.empleadoEnEdicion != null) {
             estado.empleadoEnEdicion.copy(
                 fullName = nombre,
-                email = correo,
-                roles = rolesOrdenados,
-                isActive = estado.formEmpleadoActivo
+                email = if (esAdminPrincipal) ADMIN_EMAIL else correo,
+                roles = rolesFinales,
+                isActive = activoFinal
             )
         } else {
             UserEntity(
                 id = UUID.randomUUID().toString(),
                 fullName = nombre,
                 email = correo,
-                roles = rolesOrdenados,
-                isActive = estado.formEmpleadoActivo
+                roles = rolesFinales,
+                isActive = activoFinal
             )
         }
 
         val esEdicion = estado.empleadoEnEdicion != null
         viewModelScope.launch(dispatcher) {
             try {
-                repository.guardarEmpleado(empleadoGuardar)
+                repository.guardarEmpleado(empleadoGuardar, contrasena.ifBlank { null })
                 _estadoUi.update {
                     it.copy(
                         mostrarDialogoEmpleado = false,
                         empleadoEnEdicion = null,
+                        formEmpleadoContrasena = "",
                         errorFormularioEmpleado = null,
                         mensajePersonal = if (esEdicion) {
                             "Empleado ${empleadoGuardar.fullName} actualizado."
@@ -400,6 +404,10 @@ class GerenciaViewModel(
     }
 
     fun toggleEstadoActivoEmpleado(empleado: UserEntity) {
+        if (empleado.email.equals(ADMIN_EMAIL, ignoreCase = true)) {
+            _estadoUi.update { it.copy(mensajePersonal = "La cuenta principal admin no puede desactivarse.") }
+            return
+        }
         val actualizado = empleado.copy(isActive = !empleado.isActive)
         viewModelScope.launch(dispatcher) {
             try {
@@ -422,6 +430,10 @@ class GerenciaViewModel(
     }
 
     fun solicitarEliminarEmpleado(empleado: UserEntity) {
+        if (empleado.email.equals(ADMIN_EMAIL, ignoreCase = true)) {
+            _estadoUi.update { it.copy(mensajePersonal = "La cuenta principal admin no puede eliminarse.") }
+            return
+        }
         _estadoUi.update { it.copy(empleadoAEliminar = empleado, mensajePersonal = null) }
     }
 
@@ -638,6 +650,7 @@ class GerenciaViewModel(
     }
 
     companion object {
+        private const val ADMIN_EMAIL = "admin@gmail.com"
         private val EMAIL_REGEX = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
 
         fun provideFactory(

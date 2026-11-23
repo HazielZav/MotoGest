@@ -8,6 +8,7 @@ data class WorkOrderDto(
     @SerializedName("clientId") val clientId: String,
     @SerializedName("motorcycleId") val motorcycleId: String,
     @SerializedName("receivedByUserId") val receivedByUserId: String,
+    @SerializedName("mechanicUserId") val mechanicUserId: String? = null,
     @SerializedName("status") val status: String,
     @SerializedName("serviceType") val serviceType: String,
     @SerializedName("reportedFailure") val reportedFailure: String,

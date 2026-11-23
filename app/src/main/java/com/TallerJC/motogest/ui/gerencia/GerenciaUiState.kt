@@ -55,6 +55,7 @@ data class GerenciaUiState(
     val empleadoEnEdicion: UserEntity? = null,
     val formEmpleadoNombre: String = "",
     val formEmpleadoCorreo: String = "",
+    val formEmpleadoContrasena: String = "",
     val formEmpleadoRoles: Set<UserRole> = emptySet(),
     val formEmpleadoActivo: Boolean = true,
     val errorFormularioEmpleado: String? = null,

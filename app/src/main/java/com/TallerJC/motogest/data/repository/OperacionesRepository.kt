@@ -67,7 +67,11 @@ class OperacionesRepository(
         remoteDataSource?.uploadMotorcycle(moto.toDto())
     }
 
-    override suspend fun cambiarEstadoOrden(ordenActual: WorkOrderEntity, nuevoEstado: OrderStatus) {
+    override suspend fun cambiarEstadoOrden(
+        ordenActual: WorkOrderEntity,
+        nuevoEstado: OrderStatus,
+        mechanicUserId: String?
+    ) {
         val ahora = System.currentTimeMillis()
         workOrderDao.updateOrderStatus(
             orderId = ordenActual.id,
@@ -75,7 +79,8 @@ class OperacionesRepository(
             startedAt = if (nuevoEstado == OrderStatus.EN_PROCESO) ahora else null,
             completedAt = if (nuevoEstado == OrderStatus.LISTA_ENTREGA) ahora else null,
             deliveredAt = if (nuevoEstado == OrderStatus.ENTREGADA) ahora else null,
-            updatedAt = ahora
+            updatedAt = ahora,
+            mechanicUserId = mechanicUserId
         )
         val actualizada = workOrderDao.getOrderById(ordenActual.id)
         if (actualizada != null) {

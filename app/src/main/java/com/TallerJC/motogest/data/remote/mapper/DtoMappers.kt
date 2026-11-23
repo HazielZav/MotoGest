@@ -15,6 +15,7 @@ fun WorkOrderEntity.toDto() = WorkOrderDto(
     clientId = clientId,
     motorcycleId = motorcycleId,
     receivedByUserId = receivedByUserId,
+    mechanicUserId = mechanicUserId,
     status = status,
     serviceType = serviceType,
     reportedFailure = reportedFailure,
@@ -37,6 +38,7 @@ fun WorkOrderDto.toEntity() = WorkOrderEntity(
     clientId = clientId,
     motorcycleId = motorcycleId,
     receivedByUserId = receivedByUserId,
+    mechanicUserId = mechanicUserId,
     status = status,
     serviceType = serviceType,
     reportedFailure = reportedFailure,
@@ -105,7 +107,8 @@ fun UserEntity.toDto() = UserDto(
     fullName = fullName,
     email = email,
     roles = roles,
-    isActive = isActive
+    isActive = isActive,
+    password = password
 )
 
 fun UserDto.toEntity() = UserEntity(
@@ -113,5 +116,6 @@ fun UserDto.toEntity() = UserEntity(
     fullName = fullName,
     email = email,
     roles = roles,
-    isActive = isActive
+    isActive = isActive,
+    password = password
 )

@@ -15,6 +15,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -25,6 +29,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -282,6 +288,8 @@ private fun TarjetaEmpleado(
     onToggleActivo: () -> Unit,
     onEliminar: () -> Unit
 ) {
+    val esAdminPrincipal = empleado.email.equals("admin@gmail.com", ignoreCase = true)
+
     Card(
         onClick = onEditar,
         modifier = Modifier.fillMaxWidth(),
@@ -333,10 +341,12 @@ private fun TarjetaEmpleado(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
-                    Switch(
-                        checked = empleado.isActive,
-                        onCheckedChange = { onToggleActivo() }
-                    )
+                    if (!esAdminPrincipal) {
+                        Switch(
+                            checked = empleado.isActive,
+                            onCheckedChange = { onToggleActivo() }
+                        )
+                    }
                 }
             }
 
@@ -370,23 +380,27 @@ private fun TarjetaEmpleado(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = onGestionarRoles) {
-                    Icon(Icons.Default.AdminPanelSettings, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(R.string.gerencia_personal_btn_roles), fontSize = 13.sp)
+                if (!esAdminPrincipal) {
+                    TextButton(onClick = onGestionarRoles) {
+                        Icon(Icons.Default.AdminPanelSettings, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(stringResource(R.string.gerencia_personal_btn_roles), fontSize = 13.sp)
+                    }
                 }
                 TextButton(onClick = onEditar) {
                     Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(stringResource(R.string.gerencia_personal_btn_editar), fontSize = 13.sp)
                 }
-                TextButton(
-                    onClick = onEliminar,
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(R.string.gerencia_personal_btn_eliminar), fontSize = 13.sp)
+                if (!esAdminPrincipal) {
+                    TextButton(
+                        onClick = onEliminar,
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(stringResource(R.string.gerencia_personal_btn_eliminar), fontSize = 13.sp)
+                    }
                 }
             }
         }
@@ -398,12 +412,15 @@ fun DialogoFormularioEmpleado(
     estadoUi: GerenciaUiState,
     onNombreCambio: (String) -> Unit,
     onCorreoCambio: (String) -> Unit,
+    onContrasenaCambio: (String) -> Unit,
     onToggleRol: (UserRole) -> Unit,
     onActivoCambio: (Boolean) -> Unit,
     onGuardar: () -> Unit,
     onCerrar: () -> Unit
 ) {
     val esEdicion = estadoUi.empleadoEnEdicion != null
+    val esAdminPrincipal = estadoUi.empleadoEnEdicion?.email.equals("admin@gmail.com", ignoreCase = true)
+    var mostrarContrasena by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     val scrollbarColor = MaterialTheme.colorScheme.primary
     val trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
@@ -454,6 +471,7 @@ fun DialogoFormularioEmpleado(
                 OutlinedTextField(
                     value = estadoUi.formEmpleadoCorreo,
                     onValueChange = onCorreoCambio,
+                    enabled = !esAdminPrincipal,
                     label = { Text(stringResource(R.string.gerencia_personal_label_correo)) },
                     leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
@@ -462,38 +480,67 @@ fun DialogoFormularioEmpleado(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Text(
-                    text = stringResource(R.string.gerencia_personal_label_roles),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.primary
+                OutlinedTextField(
+                    value = estadoUi.formEmpleadoContrasena,
+                    onValueChange = onContrasenaCambio,
+                    label = {
+                        Text(
+                            stringResource(
+                                if (esEdicion) R.string.gerencia_personal_label_contrasena_opcional
+                                else R.string.gerencia_personal_label_contrasena
+                            )
+                        )
+                    },
+                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                    trailingIcon = {
+                        IconButton(onClick = { mostrarContrasena = !mostrarContrasena }) {
+                            Icon(
+                                imageVector = if (mostrarContrasena) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    visualTransformation = if (mostrarContrasena) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    UserRole.entries.forEach { rol ->
-                        val seleccionado = rol in estadoUi.formEmpleadoRoles
-                        SelectorRolItem(
-                            rol = rol,
-                            seleccionado = seleccionado,
-                            onToggle = { onToggleRol(rol) }
+                if (!esAdminPrincipal) {
+                    Text(
+                        text = stringResource(R.string.gerencia_personal_label_roles),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        UserRole.entries.forEach { rol ->
+                            val seleccionado = rol in estadoUi.formEmpleadoRoles
+                            SelectorRolItem(
+                                rol = rol,
+                                seleccionado = seleccionado,
+                                onToggle = { onToggleRol(rol) }
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.gerencia_personal_label_activo),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f).padding(end = 8.dp)
+                        )
+                        Switch(
+                            checked = estadoUi.formEmpleadoActivo,
+                            onCheckedChange = onActivoCambio
                         )
                     }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.gerencia_personal_label_activo),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f).padding(end = 8.dp)
-                    )
-                    Switch(
-                        checked = estadoUi.formEmpleadoActivo,
-                        onCheckedChange = onActivoCambio
-                    )
                 }
 
                 estadoUi.errorFormularioEmpleado?.let { errorMsg ->

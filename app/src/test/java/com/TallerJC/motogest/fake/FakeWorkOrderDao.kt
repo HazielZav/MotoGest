@@ -165,7 +165,8 @@ class FakeWorkOrderDao(
         startedAt: Long?,
         completedAt: Long?,
         deliveredAt: Long?,
-        updatedAt: Long
+        updatedAt: Long,
+        mechanicUserId: String?
     ) {
         val index = ordersList.indexOfFirst { it.order.id == orderId }
         if (index != -1) {
@@ -173,6 +174,7 @@ class FakeWorkOrderDao(
             ordersList[index] = ordersList[index].copy(
                 order = curOrder.copy(
                     status = status,
+                    mechanicUserId = curOrder.mechanicUserId ?: mechanicUserId,
                     startedAt = startedAt ?: curOrder.startedAt,
                     completedAt = completedAt ?: curOrder.completedAt,
                     deliveredAt = deliveredAt ?: curOrder.deliveredAt,
