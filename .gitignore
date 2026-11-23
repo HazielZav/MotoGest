@@ -1,15 +1,40 @@
+# Gradle y compilacion
+.gradle/
+build/
+/captures
+.externalNativeBuild/
+.cxx/
 *.iml
-.gradle
-/local.properties
+
+# Kotlin
+.kotlin/
+
+# Configuracion local y secretos
+local.properties
+*.jks
+*.keystore
+*.apk
+*.aab
+*.ap_
+
+# Android Studio / IDE
 /.idea/caches
 /.idea/libraries
+/.idea/modules
 /.idea/modules.xml
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+/.idea/deploymentTargetSelector.xml
+/.idea/deviceManager.xml
+/.idea/shelf/
+/.idea/dictionaries/
+.vscode/
+
+# Sistema operativo y logs
 .DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
+Thumbs.db
+Desktop.ini
+*.log
+hs_err_pid*
+replay_pid*
