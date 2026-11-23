@@ -40,6 +40,16 @@
     <string name="period_este_mes">Este Mes</string>
     <string name="period_personalizado">Personalizado</string>
 
+    <!-- Roles de Usuario (UserRole) -->
+    <string name="role_recepcionista">Recepcionista</string>
+    <string name="role_mecanico">Mecánico</string>
+    <string name="role_repartidor">Repartidor</string>
+    <string name="role_gerente">Gerente</string>
+    <string name="role_desc_recepcionista">Registro de órdenes y entrega en mostrador</string>
+    <string name="role_desc_mecanico">Tablero de taller, mano de obra y refacciones</string>
+    <string name="role_desc_repartidor">Gestión de envíos y entregas a domicilio</string>
+    <string name="role_desc_gerente">Métricas financieras, directorio y gestión de personal</string>
+
     <!-- Acciones y Botones Comunes -->
     <string name="btn_cancelar">Cancelar</string>
     <string name="btn_confirmar">Confirmar</string>
@@ -205,4 +215,35 @@
     <string name="gerencia_dialog_detalle_titulo">Detalle de la Orden: %1$s</string>
     <string name="gerencia_directorio_buscar">Buscar cliente o motocicleta...</string>
     <string name="gerencia_directorio_vacio">No hay clientes ni motocicletas registradas aún.</string>
+
+    <!-- Gestión de Personal y Roles en Gerencia -->
+    <string name="gerencia_tab_personal">Personal</string>
+    <string name="gerencia_personal_resumen_total">Total: %1$d</string>
+    <string name="gerencia_personal_resumen_activos">Activos: %1$d</string>
+    <string name="gerencia_personal_resumen_inactivos">Inactivos: %1$d</string>
+    <string name="gerencia_personal_btn_agregar">Agregar empleado</string>
+    <string name="gerencia_personal_buscar">Buscar empleado por nombre o correo...</string>
+    <string name="gerencia_personal_filtro_todos">Todos (%1$d)</string>
+    <string name="gerencia_personal_vacio_titulo">No hay empleados registrados</string>
+    <string name="gerencia_personal_vacio_subtitulo">Agrega a tu equipo y asigna sus roles de acceso al taller.</string>
+    <string name="gerencia_personal_vacio_filtro">No se encontraron empleados con el filtro seleccionado.</string>
+    <string name="gerencia_personal_estado_activo">Activo</string>
+    <string name="gerencia_personal_estado_inactivo">Inactivo</string>
+    <string name="gerencia_personal_btn_roles">Roles</string>
+    <string name="gerencia_personal_btn_editar">Editar</string>
+    <string name="gerencia_personal_btn_eliminar">Eliminar</string>
+    <string name="gerencia_personal_dialog_nuevo_titulo">Registrar Nuevo Empleado</string>
+    <string name="gerencia_personal_dialog_editar_titulo">Modificar Empleado</string>
+    <string name="gerencia_personal_label_nombre">Nombre completo*</string>
+    <string name="gerencia_personal_label_correo">Correo electrónico*</string>
+    <string name="gerencia_personal_label_roles">Rol asignado* (selecciona una opción)</string>
+    <string name="gerencia_personal_label_activo">Cuenta activa (permitir acceso)</string>
+    <string name="gerencia_personal_btn_guardar">Guardar Empleado</string>
+    <string name="gerencia_personal_btn_actualizar">Guardar Cambios</string>
+    <string name="gerencia_personal_dialog_roles_titulo">Gestionar Rol</string>
+    <string name="gerencia_personal_dialog_roles_subtitulo">Selecciona el rol de acceso para %1$s</string>
+    <string name="gerencia_personal_btn_guardar_roles">Guardar Rol</string>
+    <string name="gerencia_personal_dialog_eliminar_titulo">¿Eliminar empleado?</string>
+    <string name="gerencia_personal_dialog_eliminar_mensaje">Se eliminará a %1$s (%2$s) del directorio de personal. Si solo deseas suspender su acceso, puedes desactivar su cuenta.</string>
+    <string name="gerencia_personal_btn_sincronizar">Sincronizar</string>
 </resources>

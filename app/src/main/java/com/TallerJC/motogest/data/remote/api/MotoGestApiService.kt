@@ -2,6 +2,7 @@ package com.TallerJC.motogest.data.remote.api
 
 import com.TallerJC.motogest.data.remote.dto.ClientDto
 import com.TallerJC.motogest.data.remote.dto.MotorcycleDto
+import com.TallerJC.motogest.data.remote.dto.UserDto
 import com.TallerJC.motogest.data.remote.dto.WorkOrderDto
 import retrofit2.Response
 import retrofit2.http.*
@@ -46,4 +47,17 @@ interface MotoGestApiService {
 
     @DELETE("motorcycles/{id}.json")
     suspend fun deleteMotorcycle(@Path("id") id: String): Response<Unit>
+
+    // --- USUARIOS / EMPLEADOS ---
+    @GET("users.json")
+    suspend fun getUsers(): Response<Map<String, UserDto>?>
+
+    @GET("users/{id}.json")
+    suspend fun getUserById(@Path("id") id: String): Response<UserDto?>
+
+    @PUT("users/{id}.json")
+    suspend fun upsertUser(@Path("id") id: String, @Body user: UserDto): Response<UserDto>
+
+    @DELETE("users/{id}.json")
+    suspend fun deleteUser(@Path("id") id: String): Response<Unit>
 }

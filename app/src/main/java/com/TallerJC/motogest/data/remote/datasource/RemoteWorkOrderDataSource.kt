@@ -3,6 +3,7 @@ package com.TallerJC.motogest.data.remote.datasource
 import com.TallerJC.motogest.data.remote.api.MotoGestApiService
 import com.TallerJC.motogest.data.remote.dto.ClientDto
 import com.TallerJC.motogest.data.remote.dto.MotorcycleDto
+import com.TallerJC.motogest.data.remote.dto.UserDto
 import com.TallerJC.motogest.data.remote.dto.WorkOrderDto
 
 interface RemoteWorkOrderDataSource {
@@ -15,6 +16,10 @@ interface RemoteWorkOrderDataSource {
 
     suspend fun fetchMotorcycles(): List<MotorcycleDto>
     suspend fun uploadMotorcycle(moto: MotorcycleDto): Boolean
+
+    suspend fun fetchUsers(): List<UserDto>
+    suspend fun uploadUser(user: UserDto): Boolean
+    suspend fun deleteUser(userId: String): Boolean
 }
 
 class RemoteWorkOrderDataSourceImpl(
@@ -90,6 +95,37 @@ class RemoteWorkOrderDataSourceImpl(
     override suspend fun uploadMotorcycle(moto: MotorcycleDto): Boolean {
         return try {
             val response = apiService.upsertMotorcycle(moto.id, moto)
+            response.isSuccessful
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    override suspend fun fetchUsers(): List<UserDto> {
+        return try {
+            val response = apiService.getUsers()
+            if (response.isSuccessful) {
+                response.body()?.values?.toList() ?: emptyList()
+            } else {
+                emptyList()
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    override suspend fun uploadUser(user: UserDto): Boolean {
+        return try {
+            val response = apiService.upsertUser(user.id, user)
+            response.isSuccessful
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    override suspend fun deleteUser(userId: String): Boolean {
+        return try {
+            val response = apiService.deleteUser(userId)
             response.isSuccessful
         } catch (_: Exception) {
             false

@@ -65,6 +65,25 @@ fun PantallaGerencia(
         onCerrarDetalleOrden = viewModel::cerrarDetalleOrden,
         onVerHistorialMoto = viewModel::verHistorialMoto,
         onCerrarHistorialMoto = viewModel::cerrarModalHistorialMoto,
+        onBuscarEmpleadosCambio = viewModel::actualizarBusquedaEmpleados,
+        onFiltroRolCambio = viewModel::cambiarFiltroRolEmpleado,
+        onAbrirNuevoEmpleado = viewModel::abrirDialogoNuevoEmpleado,
+        onAbrirEditarEmpleado = viewModel::abrirDialogoEditarEmpleado,
+        onCerrarDialogoEmpleado = viewModel::cerrarDialogoEmpleado,
+        onFormNombreCambio = viewModel::actualizarFormEmpleadoNombre,
+        onFormCorreoCambio = viewModel::actualizarFormEmpleadoCorreo,
+        onFormToggleRol = viewModel::toggleFormEmpleadoRol,
+        onFormActivoCambio = viewModel::actualizarFormEmpleadoActivo,
+        onGuardarEmpleado = viewModel::guardarEmpleadoFormulario,
+        onAbrirGestionRoles = viewModel::abrirGestionRoles,
+        onCerrarGestionRoles = viewModel::cerrarGestionRoles,
+        onToggleRolTemporal = viewModel::toggleRolTemporal,
+        onGuardarRoles = viewModel::guardarRolesEmpleado,
+        onToggleActivoEmpleado = viewModel::toggleEstadoActivoEmpleado,
+        onSolicitarEliminarEmpleado = viewModel::solicitarEliminarEmpleado,
+        onCancelarEliminarEmpleado = viewModel::cancelarEliminarEmpleado,
+        onConfirmarEliminarEmpleado = viewModel::confirmarEliminarEmpleado,
+        onLimpiarMensajePersonal = viewModel::limpiarMensajePersonal,
         modifier = modifier
     )
 }
@@ -86,6 +105,25 @@ fun PantallaGerencia(
     onCerrarDetalleOrden: () -> Unit = {},
     onVerHistorialMoto: (String) -> Unit = {},
     onCerrarHistorialMoto: () -> Unit = {},
+    onBuscarEmpleadosCambio: (String) -> Unit = {},
+    onFiltroRolCambio: (com.TallerJC.motogest.domain.model.enums.UserRole?) -> Unit = {},
+    onAbrirNuevoEmpleado: () -> Unit = {},
+    onAbrirEditarEmpleado: (com.TallerJC.motogest.data.local.entity.UserEntity) -> Unit = {},
+    onCerrarDialogoEmpleado: () -> Unit = {},
+    onFormNombreCambio: (String) -> Unit = {},
+    onFormCorreoCambio: (String) -> Unit = {},
+    onFormToggleRol: (com.TallerJC.motogest.domain.model.enums.UserRole) -> Unit = {},
+    onFormActivoCambio: (Boolean) -> Unit = {},
+    onGuardarEmpleado: () -> Unit = {},
+    onAbrirGestionRoles: (com.TallerJC.motogest.data.local.entity.UserEntity) -> Unit = {},
+    onCerrarGestionRoles: () -> Unit = {},
+    onToggleRolTemporal: (com.TallerJC.motogest.domain.model.enums.UserRole) -> Unit = {},
+    onGuardarRoles: () -> Unit = {},
+    onToggleActivoEmpleado: (com.TallerJC.motogest.data.local.entity.UserEntity) -> Unit = {},
+    onSolicitarEliminarEmpleado: (com.TallerJC.motogest.data.local.entity.UserEntity) -> Unit = {},
+    onCancelarEliminarEmpleado: () -> Unit = {},
+    onConfirmarEliminarEmpleado: () -> Unit = {},
+    onLimpiarMensajePersonal: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val currencyFormatter = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-MX")) }
@@ -159,7 +197,7 @@ fun PantallaGerencia(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                // PESTAÑAS: 0 = Métricas y Finanzas, 1 = Directorio e Historial
+                // PESTAÑAS: 0 = Métricas y Finanzas, 1 = Directorio e Historial, 2 = Personal y Roles
                 PrimaryTabRow(
                     selectedTabIndex = estadoUi.pestanaSeleccionada,
                     modifier = Modifier.fillMaxWidth()
@@ -167,18 +205,25 @@ fun PantallaGerencia(
                     Tab(
                         selected = estadoUi.pestanaSeleccionada == 0,
                         onClick = { onPestanaCambio(0) },
-                        text = { Text(stringResource(R.string.gerencia_tab_metricas), fontWeight = FontWeight.Bold) },
+                        text = { Text(stringResource(R.string.gerencia_tab_metricas), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         icon = { Icon(Icons.Default.MonetizationOn, contentDescription = null) }
                     )
                     Tab(
                         selected = estadoUi.pestanaSeleccionada == 1,
                         onClick = { onPestanaCambio(1) },
-                        text = { Text(stringResource(R.string.gerencia_tab_directorio), fontWeight = FontWeight.Bold) },
+                        text = { Text(stringResource(R.string.gerencia_tab_directorio), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         icon = { Icon(Icons.Default.TwoWheeler, contentDescription = null) }
+                    )
+                    Tab(
+                        selected = estadoUi.pestanaSeleccionada == 2,
+                        onClick = { onPestanaCambio(2) },
+                        text = { Text(stringResource(R.string.gerencia_tab_personal), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        icon = { Icon(Icons.Default.ManageAccounts, contentDescription = null) }
                     )
                 }
 
-                if (estadoUi.pestanaSeleccionada == 0) {
+                when (estadoUi.pestanaSeleccionada) {
+                    0 -> {
                     // TAB 0: MÉTRICAS Y FINANZAS
                     LazyColumn(
                         modifier = Modifier
@@ -574,7 +619,8 @@ fun PantallaGerencia(
                             }
                         }
                     }
-                } else {
+                    }
+                    1 -> {
                     // TAB 1: DIRECTORIO E HISTORIAL COMPLETO
                     Column(
                         modifier = Modifier
@@ -653,6 +699,21 @@ fun PantallaGerencia(
                                 }
                             }
                         }
+                    }
+                    }
+                    else -> {
+                        // TAB 2: GESTIÓN DE PERSONAL Y ROLES
+                        SeccionPersonalGerencia(
+                            estadoUi = estadoUi,
+                            onBuscarEmpleadosCambio = onBuscarEmpleadosCambio,
+                            onFiltroRolCambio = onFiltroRolCambio,
+                            onAbrirNuevoEmpleado = onAbrirNuevoEmpleado,
+                            onAbrirEditarEmpleado = onAbrirEditarEmpleado,
+                            onAbrirGestionRoles = onAbrirGestionRoles,
+                            onToggleActivoEmpleado = onToggleActivoEmpleado,
+                            onSolicitarEliminarEmpleado = onSolicitarEliminarEmpleado,
+                            onLimpiarMensajePersonal = onLimpiarMensajePersonal
+                        )
                     }
                 }
             }
@@ -770,6 +831,65 @@ fun PantallaGerencia(
                 confirmButton = {
                     Button(onClick = onCerrarHistorialMoto) {
                         Text(stringResource(R.string.btn_cerrar))
+                    }
+                }
+            )
+        }
+
+        // MODAL CREAR / MODIFICAR EMPLEADO
+        if (estadoUi.mostrarDialogoEmpleado) {
+            DialogoFormularioEmpleado(
+                estadoUi = estadoUi,
+                onNombreCambio = onFormNombreCambio,
+                onCorreoCambio = onFormCorreoCambio,
+                onToggleRol = onFormToggleRol,
+                onActivoCambio = onFormActivoCambio,
+                onGuardar = onGuardarEmpleado,
+                onCerrar = onCerrarDialogoEmpleado
+            )
+        }
+
+        // MODAL GESTIÓN RÁPIDA DE ROLES
+        estadoUi.empleadoGestionRoles?.let { empleado ->
+            DialogoGestionRoles(
+                empleado = empleado,
+                rolesSeleccionados = estadoUi.rolesTemporalesSeleccionados,
+                error = estadoUi.errorGestionRoles,
+                onToggleRol = onToggleRolTemporal,
+                onGuardar = onGuardarRoles,
+                onCerrar = onCerrarGestionRoles
+            )
+        }
+
+        // CONFIRMACIÓN ELIMINAR EMPLEADO
+        estadoUi.empleadoAEliminar?.let { empleado ->
+            AlertDialog(
+                onDismissRequest = onCancelarEliminarEmpleado,
+                icon = {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(32.dp)
+                    )
+                },
+                title = {
+                    Text(stringResource(R.string.gerencia_personal_dialog_eliminar_titulo), fontWeight = FontWeight.Bold)
+                },
+                text = {
+                    Text(stringResource(R.string.gerencia_personal_dialog_eliminar_mensaje, empleado.fullName, empleado.email))
+                },
+                confirmButton = {
+                    Button(
+                        onClick = onConfirmarEliminarEmpleado,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text(stringResource(R.string.gerencia_personal_btn_eliminar), fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onCancelarEliminarEmpleado) {
+                        Text(stringResource(R.string.btn_cancelar))
                     }
                 }
             )

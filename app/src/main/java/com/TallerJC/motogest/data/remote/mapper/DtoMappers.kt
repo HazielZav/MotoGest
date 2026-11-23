@@ -2,9 +2,11 @@ package com.TallerJC.motogest.data.remote.mapper
 
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
+import com.TallerJC.motogest.data.local.entity.UserEntity
 import com.TallerJC.motogest.data.local.entity.WorkOrderEntity
 import com.TallerJC.motogest.data.remote.dto.ClientDto
 import com.TallerJC.motogest.data.remote.dto.MotorcycleDto
+import com.TallerJC.motogest.data.remote.dto.UserDto
 import com.TallerJC.motogest.data.remote.dto.WorkOrderDto
 
 fun WorkOrderEntity.toDto() = WorkOrderDto(
@@ -96,4 +98,20 @@ fun MotorcycleDto.toEntity() = MotorcycleEntity(
     vin = vin,
     createdAt = createdAt,
     isSynced = true
+)
+
+fun UserEntity.toDto() = UserDto(
+    id = id,
+    fullName = fullName,
+    email = email,
+    roles = roles,
+    isActive = isActive
+)
+
+fun UserDto.toEntity() = UserEntity(
+    id = id,
+    fullName = fullName,
+    email = email,
+    roles = roles,
+    isActive = isActive
 )

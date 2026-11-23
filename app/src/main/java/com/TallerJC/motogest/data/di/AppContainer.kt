@@ -4,6 +4,7 @@ import android.content.Context
 import com.TallerJC.motogest.data.local.AppDatabase
 import com.TallerJC.motogest.data.local.dao.MediaDao
 import com.TallerJC.motogest.data.local.dao.NotificationDao
+import com.TallerJC.motogest.data.local.dao.UserDao
 import com.TallerJC.motogest.data.local.dao.WorkOrderDao
 import com.TallerJC.motogest.data.remote.api.RetrofitClient
 import com.TallerJC.motogest.data.remote.datasource.RemoteWorkOrderDataSource
@@ -17,6 +18,7 @@ interface AppContainer {
     val workOrderDao: WorkOrderDao
     val notificationDao: NotificationDao
     val mediaDao: MediaDao
+    val userDao: UserDao
     val remoteDataSource: RemoteWorkOrderDataSource
     val operacionesRepository: OperacionesRepository
     val gerenciaRepository: GerenciaRepository
@@ -39,6 +41,10 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         database.mediaDao()
     }
 
+    override val userDao: UserDao by lazy {
+        database.userDao()
+    }
+
     override val remoteDataSource: RemoteWorkOrderDataSource by lazy {
         RemoteWorkOrderDataSourceImpl(RetrofitClient.apiService)
     }
@@ -48,6 +54,6 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     }
 
     override val gerenciaRepository: GerenciaRepository by lazy {
-        GerenciaRepositoryImpl(workOrderDao)
+        GerenciaRepositoryImpl(workOrderDao, userDao, remoteDataSource)
     }
 }

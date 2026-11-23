@@ -1,12 +1,17 @@
 package com.TallerJC.motogest.data.repository
 
+import com.TallerJC.motogest.data.local.dao.UserDao
 import com.TallerJC.motogest.data.local.dao.WorkOrderDao
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
 import com.TallerJC.motogest.data.local.entity.SparePartEntity
+import com.TallerJC.motogest.data.local.entity.UserEntity
 import com.TallerJC.motogest.data.local.entity.WorkItemEntity
 import com.TallerJC.motogest.data.local.entity.WorkOrderEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
+import com.TallerJC.motogest.data.remote.datasource.RemoteWorkOrderDataSource
+import com.TallerJC.motogest.data.remote.mapper.toDto
+import com.TallerJC.motogest.data.remote.mapper.toEntity
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
@@ -19,11 +24,17 @@ interface GerenciaRepository {
     fun obtenerTodasLasOrdenes(): Flow<List<WorkOrderWithDetails>>
     fun obtenerHistorialMoto(motorcycleId: String): Flow<List<WorkOrderWithDetails>>
     fun obtenerHistorialCliente(clientId: String): Flow<List<WorkOrderWithDetails>>
+    fun obtenerEmpleados(): Flow<List<UserEntity>>
+    suspend fun guardarEmpleado(empleado: UserEntity)
+    suspend fun eliminarEmpleado(userId: String)
+    suspend fun sincronizarEmpleados(): Boolean
     suspend fun insertarDatosDemo()
 }
 
 class GerenciaRepositoryImpl(
-    private val workOrderDao: WorkOrderDao
+    private val workOrderDao: WorkOrderDao,
+    private val userDao: UserDao,
+    private val remoteDataSource: RemoteWorkOrderDataSource? = null
 ) : GerenciaRepository {
 
     override fun obtenerOrdenesEntregadas(): Flow<List<WorkOrderWithDetails>> {
@@ -40,6 +51,33 @@ class GerenciaRepositoryImpl(
 
     override fun obtenerHistorialCliente(clientId: String): Flow<List<WorkOrderWithDetails>> {
         return workOrderDao.getOrdersByClientId(clientId)
+    }
+
+    override fun obtenerEmpleados(): Flow<List<UserEntity>> {
+        return userDao.getAllUsers()
+    }
+
+    override suspend fun guardarEmpleado(empleado: UserEntity) {
+        userDao.insertUser(empleado)
+        remoteDataSource?.uploadUser(empleado.toDto())
+    }
+
+    override suspend fun eliminarEmpleado(userId: String) {
+        userDao.deleteUserById(userId)
+        remoteDataSource?.deleteUser(userId)
+    }
+
+    override suspend fun sincronizarEmpleados(): Boolean {
+        val remote = remoteDataSource ?: return true
+        return try {
+            val remotos = remote.fetchUsers()
+            if (remotos.isNotEmpty()) {
+                userDao.insertUsers(remotos.map { it.toEntity() })
+            }
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     override suspend fun insertarDatosDemo() {

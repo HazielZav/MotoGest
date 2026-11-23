@@ -2,28 +2,48 @@ package com.TallerJC.motogest.ui.gerencia
 
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
+import com.TallerJC.motogest.data.local.entity.UserEntity
 import com.TallerJC.motogest.data.local.entity.WorkOrderEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.data.repository.GerenciaRepository
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.domain.model.enums.UserRole
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GerenciaViewModelTest {
 
-    private fun crearMockRepository(ordenes: List<WorkOrderWithDetails>): GerenciaRepository {
+    private fun crearMockRepository(
+        ordenes: List<WorkOrderWithDetails>,
+        empleadosIniciales: List<UserEntity> = emptyList()
+    ): GerenciaRepository {
+        val empleadosFlow = MutableStateFlow(empleadosIniciales)
         return object : GerenciaRepository {
             override fun obtenerOrdenesEntregadas(): Flow<List<WorkOrderWithDetails>> = flowOf(ordenes)
             override fun obtenerTodasLasOrdenes(): Flow<List<WorkOrderWithDetails>> = flowOf(ordenes)
             override fun obtenerHistorialMoto(motorcycleId: String): Flow<List<WorkOrderWithDetails>> = flowOf(ordenes.filter { it.motorcycle.id == motorcycleId })
             override fun obtenerHistorialCliente(clientId: String): Flow<List<WorkOrderWithDetails>> = flowOf(ordenes.filter { it.client.id == clientId })
+            override fun obtenerEmpleados(): Flow<List<UserEntity>> = empleadosFlow
+            override suspend fun guardarEmpleado(empleado: UserEntity) {
+                val actual = empleadosFlow.value.toMutableList()
+                val idx = actual.indexOfFirst { it.id == empleado.id }
+                if (idx != -1) actual[idx] = empleado else actual.add(empleado)
+                empleadosFlow.value = actual
+            }
+            override suspend fun eliminarEmpleado(userId: String) {
+                empleadosFlow.value = empleadosFlow.value.filterNot { it.id == userId }
+            }
+            override suspend fun sincronizarEmpleados(): Boolean = true
             override suspend fun insertarDatosDemo() {}
         }
     }
@@ -211,5 +231,127 @@ class GerenciaViewModelTest {
 
         viewModel.cerrarDetalleOrden()
         assertFalse(viewModel.estadoUi.value.mostrarModalDetalleOrden)
+    }
+
+    @Test
+    fun testAgregarYValidarEmpleado() = runBlocking {
+        val viewModel = GerenciaViewModel(crearMockRepository(emptyList()), Dispatchers.Unconfined)
+
+        viewModel.abrirDialogoNuevoEmpleado()
+        assertTrue(viewModel.estadoUi.value.mostrarDialogoEmpleado)
+
+        // Validación nombre vacío
+        viewModel.guardarEmpleadoFormulario()
+        assertNotNull(viewModel.estadoUi.value.errorFormularioEmpleado)
+        assertEquals(0, viewModel.estadoUi.value.empleados.size)
+
+        // Validación correo inválido
+        viewModel.actualizarFormEmpleadoNombre("Carlos Ramírez")
+        viewModel.actualizarFormEmpleadoCorreo("correo-invalido")
+        viewModel.guardarEmpleadoFormulario()
+        assertNotNull(viewModel.estadoUi.value.errorFormularioEmpleado)
+
+        // Selección única de rol (reemplaza el rol anterior al elegir otro)
+        viewModel.actualizarFormEmpleadoCorreo("carlos@motogest.com")
+        viewModel.toggleFormEmpleadoRol(UserRole.REPARTIDOR)
+        assertEquals(setOf(UserRole.REPARTIDOR), viewModel.estadoUi.value.formEmpleadoRoles)
+        viewModel.guardarEmpleadoFormulario()
+
+        val state = viewModel.estadoUi.value
+        assertFalse(state.mostrarDialogoEmpleado)
+        assertNull(state.errorFormularioEmpleado)
+        assertEquals(1, state.empleados.size)
+        assertEquals("Carlos Ramírez", state.empleados.first().fullName)
+        assertEquals("carlos@motogest.com", state.empleados.first().email)
+        assertEquals(listOf(UserRole.REPARTIDOR.name), state.empleados.first().roles)
+        assertTrue(state.empleados.first().isActive)
+    }
+
+    @Test
+    fun testEvitarCorreoDuplicadoAlRegistrarEmpleado() = runBlocking {
+        val existente = UserEntity(
+            id = "u1",
+            fullName = "Ana López",
+            email = "ana@motogest.com",
+            roles = listOf(UserRole.RECEPCIONISTA.name)
+        )
+        val viewModel = GerenciaViewModel(crearMockRepository(emptyList(), listOf(existente)), Dispatchers.Unconfined)
+
+        viewModel.abrirDialogoNuevoEmpleado()
+        viewModel.actualizarFormEmpleadoNombre("Ana Dos")
+        viewModel.actualizarFormEmpleadoCorreo("ANA@motogest.com")
+        viewModel.guardarEmpleadoFormulario()
+
+        assertNotNull(viewModel.estadoUi.value.errorFormularioEmpleado)
+        assertTrue(viewModel.estadoUi.value.mostrarDialogoEmpleado)
+        assertEquals(1, viewModel.estadoUi.value.empleados.size)
+    }
+
+    @Test
+    fun testModificarEmpleadoYGestionarRoles() = runBlocking {
+        val empleado = UserEntity(
+            id = "u1",
+            fullName = "Luis Torres",
+            email = "luis@motogest.com",
+            roles = listOf(UserRole.MECANICO.name),
+            isActive = true
+        )
+        val viewModel = GerenciaViewModel(crearMockRepository(emptyList(), listOf(empleado)), Dispatchers.Unconfined)
+
+        // Modificar datos del empleado
+        viewModel.abrirDialogoEditarEmpleado(empleado)
+        viewModel.actualizarFormEmpleadoNombre("Luis Torres Mendoza")
+        viewModel.actualizarFormEmpleadoCorreo("luis.mendoza@motogest.com")
+        viewModel.actualizarFormEmpleadoActivo(false)
+        viewModel.guardarEmpleadoFormulario()
+
+        val editado = viewModel.estadoUi.value.empleados.first()
+        assertEquals("Luis Torres Mendoza", editado.fullName)
+        assertEquals("luis.mendoza@motogest.com", editado.email)
+        assertFalse(editado.isActive)
+
+        // Gestionar rol rápido: al elegir otro rol reemplaza la selección única
+        viewModel.abrirGestionRoles(editado)
+        viewModel.toggleRolTemporal(UserRole.RECEPCIONISTA)
+        assertEquals(setOf(UserRole.RECEPCIONISTA), viewModel.estadoUi.value.rolesTemporalesSeleccionados)
+        viewModel.toggleRolTemporal(UserRole.GERENTE)
+        assertEquals(setOf(UserRole.GERENTE), viewModel.estadoUi.value.rolesTemporalesSeleccionados)
+        viewModel.guardarRolesEmpleado()
+
+        assertNull(viewModel.estadoUi.value.empleadoGestionRoles)
+        val conNuevoRol = viewModel.estadoUi.value.empleados.first()
+        assertEquals(listOf(UserRole.GERENTE.name), conNuevoRol.roles)
+    }
+
+    @Test
+    fun testFiltrarAlternarActivoYEliminarEmpleados() = runBlocking {
+        val e1 = UserEntity("u1", "Sofía Recepción", "sofia@motogest.com", listOf(UserRole.RECEPCIONISTA.name), true)
+        val e2 = UserEntity("u2", "Pedro Mecánico", "pedro@motogest.com", listOf(UserRole.MECANICO.name), true)
+        val viewModel = GerenciaViewModel(crearMockRepository(emptyList(), listOf(e1, e2)), Dispatchers.Unconfined)
+
+        assertEquals(2, viewModel.estadoUi.value.empleadosFiltrados.size)
+
+        // Filtro por rol
+        viewModel.cambiarFiltroRolEmpleado(UserRole.MECANICO)
+        assertEquals(1, viewModel.estadoUi.value.empleadosFiltrados.size)
+        assertEquals("Pedro Mecánico", viewModel.estadoUi.value.empleadosFiltrados.first().fullName)
+
+        // Quitar filtro por rol y buscar por texto
+        viewModel.cambiarFiltroRolEmpleado(null)
+        viewModel.actualizarBusquedaEmpleados("sofia@")
+        assertEquals(1, viewModel.estadoUi.value.empleadosFiltrados.size)
+        assertEquals("Sofía Recepción", viewModel.estadoUi.value.empleadosFiltrados.first().fullName)
+
+        // Limpiar búsqueda y alternar activo
+        viewModel.actualizarBusquedaEmpleados("")
+        viewModel.toggleEstadoActivoEmpleado(e1)
+        assertFalse(viewModel.estadoUi.value.empleados.first { it.id == "u1" }.isActive)
+
+        // Eliminar empleado
+        viewModel.solicitarEliminarEmpleado(e2)
+        assertEquals(e2, viewModel.estadoUi.value.empleadoAEliminar)
+        viewModel.confirmarEliminarEmpleado()
+        assertNull(viewModel.estadoUi.value.empleadoAEliminar)
+        assertEquals(1, viewModel.estadoUi.value.empleados.size)
     }
 }

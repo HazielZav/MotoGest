@@ -5,6 +5,7 @@ import com.TallerJC.motogest.R
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.domain.model.enums.UserRole
 import com.TallerJC.motogest.ui.gerencia.PeriodoFiltro
 
 @StringRes
@@ -40,4 +41,20 @@ fun PeriodoFiltro.getLabelRes(): Int = when (this) {
     PeriodoFiltro.ESTA_SEMANA -> R.string.period_esta_semana
     PeriodoFiltro.ESTE_MES -> R.string.period_este_mes
     PeriodoFiltro.PERSONALIZADO -> R.string.period_personalizado
+}
+
+@StringRes
+fun UserRole.getLabelRes(): Int = when (this) {
+    UserRole.RECEPCIONISTA -> R.string.role_recepcionista
+    UserRole.MECANICO -> R.string.role_mecanico
+    UserRole.REPARTIDOR -> R.string.role_repartidor
+    UserRole.GERENTE -> R.string.role_gerente
+}
+
+@StringRes
+fun UserRole.getDescriptionRes(): Int = when (this) {
+    UserRole.RECEPCIONISTA -> R.string.role_desc_recepcionista
+    UserRole.MECANICO -> R.string.role_desc_mecanico
+    UserRole.REPARTIDOR -> R.string.role_desc_repartidor
+    UserRole.GERENTE -> R.string.role_desc_gerente
 }

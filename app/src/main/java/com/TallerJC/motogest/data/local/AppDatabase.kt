@@ -8,6 +8,7 @@ import androidx.room.TypeConverters
 import com.TallerJC.motogest.data.local.converter.Converters
 import com.TallerJC.motogest.data.local.dao.MediaDao
 import com.TallerJC.motogest.data.local.dao.NotificationDao
+import com.TallerJC.motogest.data.local.dao.UserDao
 import com.TallerJC.motogest.data.local.dao.WorkOrderDao
 import com.TallerJC.motogest.data.local.entity.*
 
@@ -31,6 +32,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun workOrderDao(): WorkOrderDao
     abstract fun notificationDao(): NotificationDao
     abstract fun mediaDao(): MediaDao
+    abstract fun userDao(): UserDao
 
     companion object {
         @Volatile

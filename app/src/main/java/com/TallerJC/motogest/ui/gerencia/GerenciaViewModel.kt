@@ -3,10 +3,12 @@ package com.TallerJC.motogest.ui.gerencia
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.TallerJC.motogest.data.local.entity.UserEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.data.repository.GerenciaRepository
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.domain.model.enums.UserRole
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +20,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import java.util.UUID
 
 class GerenciaViewModel(
     private val repository: GerenciaRepository,
@@ -29,6 +32,7 @@ class GerenciaViewModel(
 
     private var todasLasOrdenesEntregadas: List<WorkOrderWithDetails> = emptyList()
     private var todasLasOrdenesSistema: List<WorkOrderWithDetails> = emptyList()
+    private var todosLosEmpleados: List<UserEntity> = emptyList()
 
     init {
         cargarDatos()
@@ -65,6 +69,19 @@ class GerenciaViewModel(
                             actual.copy(todasLasOrdenes = todas)
                         }
                         aplicarFiltroDirectorio()
+                    }
+            }
+
+            // Observamos los empleados y sus roles
+            launch {
+                repository.obtenerEmpleados()
+                    .catch { /* error ignorado */ }
+                    .collect { listaEmpleados ->
+                        todosLosEmpleados = listaEmpleados
+                        _estadoUi.update { actual ->
+                            actual.copy(empleados = listaEmpleados)
+                        }
+                        aplicarFiltroEmpleados()
                     }
             }
         }
@@ -170,6 +187,303 @@ class GerenciaViewModel(
 
     fun cerrarModalHistorialMoto() {
         _estadoUi.update { it.copy(mostrarModalHistorialMoto = false) }
+    }
+
+    // --- GESTIÓN DE PERSONAL Y ROLES ---
+
+    fun actualizarBusquedaEmpleados(texto: String) {
+        _estadoUi.update { it.copy(textoBusquedaEmpleados = texto) }
+        aplicarFiltroEmpleados()
+    }
+
+    fun cambiarFiltroRolEmpleado(rol: UserRole?) {
+        _estadoUi.update { it.copy(filtroRolEmpleado = rol) }
+        aplicarFiltroEmpleados()
+    }
+
+    fun abrirDialogoNuevoEmpleado() {
+        _estadoUi.update {
+            it.copy(
+                mostrarDialogoEmpleado = true,
+                empleadoEnEdicion = null,
+                formEmpleadoNombre = "",
+                formEmpleadoCorreo = "",
+                formEmpleadoRoles = setOf(UserRole.MECANICO),
+                formEmpleadoActivo = true,
+                errorFormularioEmpleado = null,
+                mensajePersonal = null
+            )
+        }
+    }
+
+    fun abrirDialogoEditarEmpleado(empleado: UserEntity) {
+        _estadoUi.update {
+            it.copy(
+                mostrarDialogoEmpleado = true,
+                empleadoEnEdicion = empleado,
+                formEmpleadoNombre = empleado.fullName,
+                formEmpleadoCorreo = empleado.email,
+                formEmpleadoRoles = parseRoles(empleado.roles),
+                formEmpleadoActivo = empleado.isActive,
+                errorFormularioEmpleado = null,
+                mensajePersonal = null
+            )
+        }
+    }
+
+    fun cerrarDialogoEmpleado() {
+        _estadoUi.update {
+            it.copy(
+                mostrarDialogoEmpleado = false,
+                empleadoEnEdicion = null,
+                errorFormularioEmpleado = null
+            )
+        }
+    }
+
+    fun actualizarFormEmpleadoNombre(nombre: String) {
+        _estadoUi.update { it.copy(formEmpleadoNombre = nombre, errorFormularioEmpleado = null) }
+    }
+
+    fun actualizarFormEmpleadoCorreo(correo: String) {
+        _estadoUi.update { it.copy(formEmpleadoCorreo = correo, errorFormularioEmpleado = null) }
+    }
+
+    fun toggleFormEmpleadoRol(rol: UserRole) {
+        _estadoUi.update { actual ->
+            actual.copy(
+                formEmpleadoRoles = setOf(rol),
+                errorFormularioEmpleado = null
+            )
+        }
+    }
+
+    fun actualizarFormEmpleadoActivo(activo: Boolean) {
+        _estadoUi.update { it.copy(formEmpleadoActivo = activo) }
+    }
+
+    fun guardarEmpleadoFormulario() {
+        val estado = _estadoUi.value
+        val nombre = estado.formEmpleadoNombre.trim()
+        val correo = estado.formEmpleadoCorreo.trim()
+        val roles = estado.formEmpleadoRoles
+
+        val errorValidacion = when {
+            nombre.isBlank() -> "El nombre completo es obligatorio."
+            correo.isBlank() -> "El correo electrónico es obligatorio."
+            !EMAIL_REGEX.matches(correo) -> "Ingresa un correo electrónico válido."
+            todosLosEmpleados.any {
+                it.id != estado.empleadoEnEdicion?.id && it.email.equals(correo, ignoreCase = true)
+            } -> "Ya existe un empleado registrado con ese correo."
+            roles.isEmpty() -> "Selecciona al menos un rol para el empleado."
+            else -> null
+        }
+
+        if (errorValidacion != null) {
+            _estadoUi.update { it.copy(errorFormularioEmpleado = errorValidacion) }
+            return
+        }
+
+        val rolesOrdenados = serializeRoles(roles)
+        val empleadoGuardar = if (estado.empleadoEnEdicion != null) {
+            estado.empleadoEnEdicion.copy(
+                fullName = nombre,
+                email = correo,
+                roles = rolesOrdenados,
+                isActive = estado.formEmpleadoActivo
+            )
+        } else {
+            UserEntity(
+                id = UUID.randomUUID().toString(),
+                fullName = nombre,
+                email = correo,
+                roles = rolesOrdenados,
+                isActive = estado.formEmpleadoActivo
+            )
+        }
+
+        val esEdicion = estado.empleadoEnEdicion != null
+        viewModelScope.launch(dispatcher) {
+            try {
+                repository.guardarEmpleado(empleadoGuardar)
+                _estadoUi.update {
+                    it.copy(
+                        mostrarDialogoEmpleado = false,
+                        empleadoEnEdicion = null,
+                        errorFormularioEmpleado = null,
+                        mensajePersonal = if (esEdicion) {
+                            "Empleado ${empleadoGuardar.fullName} actualizado."
+                        } else {
+                            "Empleado ${empleadoGuardar.fullName} registrado."
+                        }
+                    )
+                }
+            } catch (ex: Exception) {
+                _estadoUi.update {
+                    it.copy(errorFormularioEmpleado = "No se pudo guardar el empleado: ${ex.message}")
+                }
+            }
+        }
+    }
+
+    fun abrirGestionRoles(empleado: UserEntity) {
+        _estadoUi.update {
+            it.copy(
+                empleadoGestionRoles = empleado,
+                rolesTemporalesSeleccionados = parseRoles(empleado.roles),
+                errorGestionRoles = null,
+                mensajePersonal = null
+            )
+        }
+    }
+
+    fun cerrarGestionRoles() {
+        _estadoUi.update {
+            it.copy(
+                empleadoGestionRoles = null,
+                rolesTemporalesSeleccionados = emptySet(),
+                errorGestionRoles = null
+            )
+        }
+    }
+
+    fun toggleRolTemporal(rol: UserRole) {
+        _estadoUi.update { actual ->
+            actual.copy(
+                rolesTemporalesSeleccionados = setOf(rol),
+                errorGestionRoles = null
+            )
+        }
+    }
+
+    fun guardarRolesEmpleado() {
+        val estado = _estadoUi.value
+        val empleado = estado.empleadoGestionRoles ?: return
+        val roles = estado.rolesTemporalesSeleccionados
+
+        if (roles.isEmpty()) {
+            _estadoUi.update {
+                it.copy(errorGestionRoles = "El empleado debe tener al menos un rol asignado.")
+            }
+            return
+        }
+
+        val empleadoActualizado = empleado.copy(roles = serializeRoles(roles))
+
+        viewModelScope.launch(dispatcher) {
+            try {
+                repository.guardarEmpleado(empleadoActualizado)
+                _estadoUi.update {
+                    it.copy(
+                        empleadoGestionRoles = null,
+                        rolesTemporalesSeleccionados = emptySet(),
+                        errorGestionRoles = null,
+                        mensajePersonal = "Roles actualizados para ${empleado.fullName}."
+                    )
+                }
+            } catch (ex: Exception) {
+                _estadoUi.update {
+                    it.copy(errorGestionRoles = "Error al actualizar roles: ${ex.message}")
+                }
+            }
+        }
+    }
+
+    private fun parseRoles(roles: List<String>): Set<UserRole> {
+        return roles.mapNotNull { nombre ->
+            runCatching { UserRole.valueOf(nombre) }.getOrNull()
+        }.toSet()
+    }
+
+    private fun serializeRoles(roles: Set<UserRole>): List<String> {
+        return UserRole.entries.filter { it in roles }.map { it.name }
+    }
+
+    fun toggleEstadoActivoEmpleado(empleado: UserEntity) {
+        val actualizado = empleado.copy(isActive = !empleado.isActive)
+        viewModelScope.launch(dispatcher) {
+            try {
+                repository.guardarEmpleado(actualizado)
+                _estadoUi.update {
+                    it.copy(
+                        mensajePersonal = if (actualizado.isActive) {
+                            "${actualizado.fullName} activado."
+                        } else {
+                            "${actualizado.fullName} desactivado."
+                        }
+                    )
+                }
+            } catch (ex: Exception) {
+                _estadoUi.update {
+                    it.copy(mensajePersonal = "No se pudo cambiar el estado: ${ex.message}")
+                }
+            }
+        }
+    }
+
+    fun solicitarEliminarEmpleado(empleado: UserEntity) {
+        _estadoUi.update { it.copy(empleadoAEliminar = empleado, mensajePersonal = null) }
+    }
+
+    fun cancelarEliminarEmpleado() {
+        _estadoUi.update { it.copy(empleadoAEliminar = null) }
+    }
+
+    fun confirmarEliminarEmpleado() {
+        val empleado = _estadoUi.value.empleadoAEliminar ?: return
+        viewModelScope.launch(dispatcher) {
+            try {
+                repository.eliminarEmpleado(empleado.id)
+                _estadoUi.update {
+                    it.copy(
+                        empleadoAEliminar = null,
+                        mensajePersonal = "Empleado ${empleado.fullName} eliminado."
+                    )
+                }
+            } catch (ex: Exception) {
+                _estadoUi.update {
+                    it.copy(
+                        empleadoAEliminar = null,
+                        mensajePersonal = "No se pudo eliminar: ${ex.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun sincronizarEmpleadosNube() {
+        viewModelScope.launch(dispatcher) {
+            val ok = repository.sincronizarEmpleados()
+            _estadoUi.update {
+                it.copy(
+                    mensajePersonal = if (ok) {
+                        "Personal sincronizado con la nube."
+                    } else {
+                        "No se pudo sincronizar con la nube. Trabajando en modo local."
+                    }
+                )
+            }
+        }
+    }
+
+    fun limpiarMensajePersonal() {
+        _estadoUi.update { it.copy(mensajePersonal = null) }
+    }
+
+    private fun aplicarFiltroEmpleados() {
+        val estado = _estadoUi.value
+        val query = estado.textoBusquedaEmpleados.trim()
+        val filtroRol = estado.filtroRolEmpleado
+
+        val filtrados = todosLosEmpleados.filter { empleado ->
+            val coincideBusqueda = query.isEmpty() ||
+                empleado.fullName.contains(query, ignoreCase = true) ||
+                empleado.email.contains(query, ignoreCase = true)
+            val coincideRol = filtroRol == null || filtroRol.name in empleado.roles
+            coincideBusqueda && coincideRol
+        }
+
+        _estadoUi.update { it.copy(empleadosFiltrados = filtrados) }
     }
 
     private fun recalcularMetricasYFiltros() {
@@ -324,6 +638,8 @@ class GerenciaViewModel(
     }
 
     companion object {
+        private val EMAIL_REGEX = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
+
         fun provideFactory(
             repository: GerenciaRepository,
             dispatcher: CoroutineDispatcher = Dispatchers.Default

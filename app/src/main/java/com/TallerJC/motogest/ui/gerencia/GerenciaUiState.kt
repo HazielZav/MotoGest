@@ -1,7 +1,9 @@
 package com.TallerJC.motogest.ui.gerencia
 
+import com.TallerJC.motogest.data.local.entity.UserEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.domain.model.enums.UserRole
 
 enum class PeriodoFiltro(val titulo: String) {
     HOY("Hoy"),
@@ -18,7 +20,7 @@ data class DistribucionServicio(
 )
 
 data class GerenciaUiState(
-    val pestanaSeleccionada: Int = 0, // 0 = Métricas y Finanzas, 1 = Historial y Directorio
+    val pestanaSeleccionada: Int = 0, // 0 = Métricas y Finanzas, 1 = Historial y Directorio, 2 = Personal y Roles
     val periodoSeleccionado: PeriodoFiltro = PeriodoFiltro.ESTE_MES,
     val fechaInicioPersonalizada: Long? = null,
     val fechaFinPersonalizada: Long? = null,
@@ -43,6 +45,24 @@ data class GerenciaUiState(
     val todasLasOrdenes: List<WorkOrderWithDetails> = emptyList(),
     val textoBusquedaDirectorio: String = "",
     val ordenesDirectorioFiltradas: List<WorkOrderWithDetails> = emptyList(),
+
+    // Gestión de Personal y Roles
+    val empleados: List<UserEntity> = emptyList(),
+    val empleadosFiltrados: List<UserEntity> = emptyList(),
+    val textoBusquedaEmpleados: String = "",
+    val filtroRolEmpleado: UserRole? = null,
+    val mostrarDialogoEmpleado: Boolean = false,
+    val empleadoEnEdicion: UserEntity? = null,
+    val formEmpleadoNombre: String = "",
+    val formEmpleadoCorreo: String = "",
+    val formEmpleadoRoles: Set<UserRole> = emptySet(),
+    val formEmpleadoActivo: Boolean = true,
+    val errorFormularioEmpleado: String? = null,
+    val empleadoGestionRoles: UserEntity? = null,
+    val rolesTemporalesSeleccionados: Set<UserRole> = emptySet(),
+    val errorGestionRoles: String? = null,
+    val empleadoAEliminar: UserEntity? = null,
+    val mensajePersonal: String? = null,
 
     // Modales de Detalle
     val ordenSeleccionadaDetalle: WorkOrderWithDetails? = null,
