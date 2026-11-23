@@ -291,7 +291,6 @@ private fun TarjetaEmpleado(
     val esAdminPrincipal = empleado.email.equals("admin@gmail.com", ignoreCase = true)
 
     Card(
-        onClick = onEditar,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(14.dp),
