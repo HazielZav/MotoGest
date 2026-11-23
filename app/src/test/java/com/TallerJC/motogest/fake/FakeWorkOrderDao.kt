@@ -3,6 +3,7 @@ package com.TallerJC.motogest.fake
 import com.TallerJC.motogest.data.local.dao.WorkOrderDao
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
+import com.TallerJC.motogest.data.local.entity.PendingDeletionEntity
 import com.TallerJC.motogest.data.local.entity.SparePartEntity
 import com.TallerJC.motogest.data.local.entity.WorkItemEntity
 import com.TallerJC.motogest.data.local.entity.WorkOrderEntity
@@ -23,6 +24,7 @@ class FakeWorkOrderDao(
     val motorcyclesList = mutableListOf<MotorcycleEntity>().apply { addAll(initialMotorcycles) }
     val workItemsList = mutableListOf<WorkItemEntity>()
     val sparePartsList = mutableListOf<SparePartEntity>()
+    val pendingDeletionsList = mutableListOf<PendingDeletionEntity>()
 
     private val _ordersFlow = MutableStateFlow<List<WorkOrderWithDetails>>(ordersList.toList())
     private val _clientsFlow = MutableStateFlow<List<ClientEntity>>(clientsList.toList())
@@ -123,7 +125,7 @@ class FakeWorkOrderDao(
     override suspend fun updateMotorcycleVin(motoId: String, nuevoVin: String) {
         val index = motorcyclesList.indexOfFirst { it.id == motoId }
         if (index != -1) {
-            motorcyclesList[index] = motorcyclesList[index].copy(vin = nuevoVin)
+            motorcyclesList[index] = motorcyclesList[index].copy(vin = nuevoVin, isSynced = false)
             emitState()
         }
     }
@@ -142,7 +144,13 @@ class FakeWorkOrderDao(
             val curOrder = ordersList[index].order
             val newTotal = labor + parts + curOrder.deliveryCost
             ordersList[index] = ordersList[index].copy(
-                order = curOrder.copy(totalLaborCost = labor, totalPartsCost = parts, totalAmount = newTotal, updatedAt = updatedAt)
+                order = curOrder.copy(
+                    totalLaborCost = labor,
+                    totalPartsCost = parts,
+                    totalAmount = newTotal,
+                    updatedAt = updatedAt,
+                    isSynced = false
+                )
             )
             emitState()
         }
@@ -153,7 +161,7 @@ class FakeWorkOrderDao(
         if (index != -1) {
             val curOrder = ordersList[index].order
             ordersList[index] = ordersList[index].copy(
-                order = curOrder.copy(recommendations = recommendations, updatedAt = updatedAt)
+                order = curOrder.copy(recommendations = recommendations, updatedAt = updatedAt, isSynced = false)
             )
             emitState()
         }
@@ -176,7 +184,8 @@ class FakeWorkOrderDao(
                     startedAt = startedAt ?: curOrder.startedAt,
                     completedAt = completedAt ?: curOrder.completedAt,
                     deliveredAt = deliveredAt ?: curOrder.deliveredAt,
-                    updatedAt = updatedAt
+                    updatedAt = updatedAt,
+                    isSynced = false
                 )
             )
             emitState()
@@ -186,7 +195,7 @@ class FakeWorkOrderDao(
     override suspend fun updateClientDeliveryCost(clientId: String, cost: Double) {
         val index = clientsList.indexOfFirst { it.id == clientId }
         if (index != -1) {
-            clientsList[index] = clientsList[index].copy(defaultDeliveryCost = cost)
+            clientsList[index] = clientsList[index].copy(defaultDeliveryCost = cost, isSynced = false)
             emitState()
         }
     }
@@ -241,5 +250,16 @@ class FakeWorkOrderDao(
             motorcyclesList[index] = motorcyclesList[index].copy(isSynced = true)
             emitState()
         }
+    }
+
+    override suspend fun insertPendingDeletion(deletion: PendingDeletionEntity) {
+        pendingDeletionsList.removeAll { it.entityId == deletion.entityId }
+        pendingDeletionsList.add(deletion)
+    }
+
+    override suspend fun getPendingDeletions(): List<PendingDeletionEntity> = pendingDeletionsList.toList()
+
+    override suspend fun deletePendingDeletion(entityId: String) {
+        pendingDeletionsList.removeAll { it.entityId == entityId }
     }
 }

@@ -26,18 +26,24 @@ fun WorkOrderEntity.toDto() = WorkOrderDto(
     startedAt = startedAt,
     completedAt = completedAt,
     deliveredAt = deliveredAt,
-    updatedAt = updatedAt
+    updatedAt = updatedAt,
+    mechanicUserId = mechanicUserId,
+    intakeDamageNotes = intakeDamageNotes,
+    intakePhotos = intakePhotos
 )
 
-fun WorkOrderDto.toEntity() = WorkOrderEntity(
+fun WorkOrderDto.toEntity(existing: WorkOrderEntity? = null) = WorkOrderEntity(
     id = id,
     folio = folio,
     clientId = clientId,
     motorcycleId = motorcycleId,
     receivedByUserId = receivedByUserId,
+    mechanicUserId = mechanicUserId ?: existing?.mechanicUserId,
     status = status,
     serviceType = serviceType,
     reportedFailure = reportedFailure,
+    intakeDamageNotes = intakeDamageNotes ?: existing?.intakeDamageNotes,
+    intakePhotos = intakePhotos ?: existing?.intakePhotos ?: emptyList(),
     deliveryType = deliveryType,
     deliveryCost = deliveryCost,
     totalLaborCost = totalLaborCost,

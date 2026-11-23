@@ -165,6 +165,15 @@ class EntregasViewModelTest {
                 emitCurrent()
             }
         }
+        val pendingDeletions = mutableListOf<PendingDeletionEntity>()
+        override suspend fun insertPendingDeletion(deletion: PendingDeletionEntity) {
+            pendingDeletions.removeAll { it.entityId == deletion.entityId }
+            pendingDeletions.add(deletion)
+        }
+        override suspend fun getPendingDeletions(): List<PendingDeletionEntity> = pendingDeletions.toList()
+        override suspend fun deletePendingDeletion(entityId: String) {
+            pendingDeletions.removeAll { it.entityId == entityId }
+        }
     }
 
     @Before

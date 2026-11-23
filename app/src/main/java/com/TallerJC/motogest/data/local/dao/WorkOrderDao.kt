@@ -5,8 +5,10 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Upsert
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
+import com.TallerJC.motogest.data.local.entity.PendingDeletionEntity
 import com.TallerJC.motogest.data.local.entity.SparePartEntity
 import com.TallerJC.motogest.data.local.entity.WorkItemEntity
 import com.TallerJC.motogest.data.local.entity.WorkOrderEntity
@@ -49,34 +51,34 @@ interface WorkOrderDao {
     @Query("SELECT * FROM work_orders WHERE clientId = :clientId ORDER BY createdAt DESC")
     fun getOrdersByClientId(clientId: String): Flow<List<WorkOrderWithDetails>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertOrder(order: WorkOrderEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertOrders(orders: List<WorkOrderEntity>)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertClient(client: ClientEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertClients(clients: List<ClientEntity>)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertMotorcycle(motorcycle: MotorcycleEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertMotorcycles(motorcycles: List<MotorcycleEntity>)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertWorkItem(item: WorkItemEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertWorkItems(items: List<WorkItemEntity>)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertSparePart(part: SparePartEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertSpareParts(parts: List<SparePartEntity>)
 
     @Query("SELECT COUNT(*) FROM work_orders")
@@ -91,7 +93,7 @@ interface WorkOrderDao {
     @Query("DELETE FROM motorcycles WHERE id = :motoId")
     suspend fun deleteMotorcycleById(motoId: String)
 
-    @Query("UPDATE motorcycles SET vin = :nuevoVin WHERE id = :motoId")
+    @Query("UPDATE motorcycles SET vin = :nuevoVin, isSynced = 0 WHERE id = :motoId")
     suspend fun updateMotorcycleVin(motoId: String, nuevoVin: String)
 
     @Query("SELECT COALESCE(SUM(cost), 0.0) FROM work_items WHERE orderId = :orderId")
@@ -100,13 +102,13 @@ interface WorkOrderDao {
     @Query("SELECT COALESCE(SUM(cost), 0.0) FROM spare_parts WHERE orderId = :orderId")
     suspend fun getPartsTotal(orderId: String): Double
 
-    @Query("UPDATE work_orders SET totalLaborCost = :labor, totalPartsCost = :parts, totalAmount = :labor + :parts + deliveryCost, updatedAt = :updatedAt WHERE id = :orderId")
+    @Query("UPDATE work_orders SET totalLaborCost = :labor, totalPartsCost = :parts, totalAmount = :labor + :parts + deliveryCost, updatedAt = :updatedAt, isSynced = 0 WHERE id = :orderId")
     suspend fun updateOrderFinancialTotals(orderId: String, labor: Double, parts: Double, updatedAt: Long = System.currentTimeMillis())
 
-    @Query("UPDATE work_orders SET recommendations = :recommendations, updatedAt = :updatedAt WHERE id = :orderId")
+    @Query("UPDATE work_orders SET recommendations = :recommendations, updatedAt = :updatedAt, isSynced = 0 WHERE id = :orderId")
     suspend fun updateRecommendations(orderId: String, recommendations: String, updatedAt: Long = System.currentTimeMillis())
 
-    @Query("UPDATE work_orders SET status = :status, startedAt = CASE WHEN :startedAt IS NOT NULL AND startedAt IS NULL THEN :startedAt ELSE startedAt END, completedAt = CASE WHEN :completedAt IS NOT NULL THEN :completedAt ELSE completedAt END, deliveredAt = CASE WHEN :deliveredAt IS NOT NULL THEN :deliveredAt ELSE deliveredAt END, updatedAt = :updatedAt WHERE id = :orderId")
+    @Query("UPDATE work_orders SET status = :status, startedAt = CASE WHEN :startedAt IS NOT NULL AND startedAt IS NULL THEN :startedAt ELSE startedAt END, completedAt = CASE WHEN :completedAt IS NOT NULL THEN :completedAt ELSE completedAt END, deliveredAt = CASE WHEN :deliveredAt IS NOT NULL THEN :deliveredAt ELSE deliveredAt END, updatedAt = :updatedAt, isSynced = 0 WHERE id = :orderId")
     suspend fun updateOrderStatus(
         orderId: String,
         status: String,
@@ -116,7 +118,7 @@ interface WorkOrderDao {
         updatedAt: Long = System.currentTimeMillis()
     )
 
-    @Query("UPDATE clients SET defaultDeliveryCost = :cost WHERE id = :clientId")
+    @Query("UPDATE clients SET defaultDeliveryCost = :cost, isSynced = 0 WHERE id = :clientId")
     suspend fun updateClientDeliveryCost(clientId: String, cost: Double)
 
     // Sincronización
@@ -137,6 +139,21 @@ interface WorkOrderDao {
 
     @Query("UPDATE motorcycles SET isSynced = 1 WHERE id = :motoId")
     suspend fun markMotorcycleAsSynced(motoId: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPendingDeletion(deletion: PendingDeletionEntity)
+
+    @Query("SELECT * FROM pending_deletions ORDER BY deletedAt ASC")
+    suspend fun getPendingDeletions(): List<PendingDeletionEntity>
+
+    @Query("DELETE FROM pending_deletions WHERE entityId = :entityId")
+    suspend fun deletePendingDeletion(entityId: String)
+
+    @Transaction
+    suspend fun deleteOrderWithPendingSync(orderId: String) {
+        deleteOrderById(orderId)
+        insertPendingDeletion(PendingDeletionEntity(entityId = orderId))
+    }
 
     @Transaction
     suspend fun addWorkItemAndUpdateTotals(item: WorkItemEntity) {

@@ -3,6 +3,7 @@ package com.TallerJC.motogest.ui.taller
 import com.TallerJC.motogest.data.local.dao.WorkOrderDao
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
+import com.TallerJC.motogest.data.local.entity.PendingDeletionEntity
 import com.TallerJC.motogest.data.local.entity.SparePartEntity
 import com.TallerJC.motogest.data.local.entity.WorkItemEntity
 import com.TallerJC.motogest.data.local.entity.WorkOrderEntity
@@ -173,6 +174,15 @@ class TallerViewModelTest {
                 motorcycles[idx] = motorcycles[idx].copy(isSynced = true)
                 emitCurrent()
             }
+        }
+        val pendingDeletions = mutableListOf<PendingDeletionEntity>()
+        override suspend fun insertPendingDeletion(deletion: PendingDeletionEntity) {
+            pendingDeletions.removeAll { it.entityId == deletion.entityId }
+            pendingDeletions.add(deletion)
+        }
+        override suspend fun getPendingDeletions(): List<PendingDeletionEntity> = pendingDeletions.toList()
+        override suspend fun deletePendingDeletion(entityId: String) {
+            pendingDeletions.removeAll { it.entityId == entityId }
         }
     }
 

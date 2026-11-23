@@ -407,10 +407,17 @@ class RecepcionViewModel(
 
         // Validación de cliente
         val clienteEntity = if (actual.clienteSeleccionado != null) {
+            val nuevoNombre = actual.nombreCliente.trim().ifBlank { actual.clienteSeleccionado.name }
+            val nuevoTelefono = actual.telefonoCliente.trim().ifBlank { actual.clienteSeleccionado.phone }
+            val nuevaDireccion = actual.direccionCliente.trim().ifBlank { actual.clienteSeleccionado.address }
+            val huboCambios = nuevoNombre != actual.clienteSeleccionado.name ||
+                nuevoTelefono != actual.clienteSeleccionado.phone ||
+                nuevaDireccion != actual.clienteSeleccionado.address
             actual.clienteSeleccionado.copy(
-                name = actual.nombreCliente.trim().ifBlank { actual.clienteSeleccionado.name },
-                phone = actual.telefonoCliente.trim().ifBlank { actual.clienteSeleccionado.phone },
-                address = actual.direccionCliente.trim().ifBlank { actual.clienteSeleccionado.address }
+                name = nuevoNombre,
+                phone = nuevoTelefono,
+                address = nuevaDireccion,
+                isSynced = if (huboCambios) false else actual.clienteSeleccionado.isSynced
             )
         } else {
             if (actual.nombreCliente.isBlank() || actual.telefonoCliente.length < 10) {
@@ -430,14 +437,28 @@ class RecepcionViewModel(
 
         // Validación de motocicleta
         val motoEntity = if (actual.motoSeleccionada != null) {
+            val nuevaMarca = actual.marcaMoto.trim().ifBlank { actual.motoSeleccionada.brand }
+            val nuevoModelo = actual.modeloMoto.trim().ifBlank { actual.motoSeleccionada.model }
+            val nuevoColor = actual.colorMoto.trim().ifBlank { actual.motoSeleccionada.color }
+            val nuevaPlaca = actual.placaOpcional.trim().ifBlank { actual.motoSeleccionada.plate }
+            val nuevoAnio = actual.anioOpcional.toIntOrNull() ?: actual.motoSeleccionada.year
+            val nuevoVin = actual.vinOpcional.trim().ifBlank { actual.motoSeleccionada.vin }
+            val huboCambios = nuevaMarca != actual.motoSeleccionada.brand ||
+                nuevoModelo != actual.motoSeleccionada.model ||
+                nuevoColor != actual.motoSeleccionada.color ||
+                actual.fotoMotoUri != actual.motoSeleccionada.photoUrl ||
+                nuevaPlaca != actual.motoSeleccionada.plate ||
+                nuevoAnio != actual.motoSeleccionada.year ||
+                nuevoVin != actual.motoSeleccionada.vin
             actual.motoSeleccionada.copy(
-                brand = actual.marcaMoto.trim().ifBlank { actual.motoSeleccionada.brand },
-                model = actual.modeloMoto.trim().ifBlank { actual.motoSeleccionada.model },
-                color = actual.colorMoto.trim().ifBlank { actual.motoSeleccionada.color },
+                brand = nuevaMarca,
+                model = nuevoModelo,
+                color = nuevoColor,
                 photoUrl = actual.fotoMotoUri,
-                plate = actual.placaOpcional.trim().ifBlank { actual.motoSeleccionada.plate },
-                year = actual.anioOpcional.toIntOrNull() ?: actual.motoSeleccionada.year,
-                vin = actual.vinOpcional.trim().ifBlank { actual.motoSeleccionada.vin }
+                plate = nuevaPlaca,
+                year = nuevoAnio,
+                vin = nuevoVin,
+                isSynced = if (huboCambios) false else actual.motoSeleccionada.isSynced
             )
         } else {
             if (actual.marcaMoto.isBlank() || actual.modeloMoto.isBlank() || actual.colorMoto.isBlank()) {

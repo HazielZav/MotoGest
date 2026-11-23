@@ -21,5 +21,8 @@ data class WorkOrderDto(
     @SerializedName("startedAt") val startedAt: Long? = null,
     @SerializedName("completedAt") val completedAt: Long? = null,
     @SerializedName("deliveredAt") val deliveredAt: Long? = null,
-    @SerializedName("updatedAt") val updatedAt: Long = System.currentTimeMillis()
+    @SerializedName("updatedAt") val updatedAt: Long = System.currentTimeMillis(),
+    @SerializedName("mechanicUserId") val mechanicUserId: String? = null,
+    @SerializedName("intakeDamageNotes") val intakeDamageNotes: String? = null,
+    @SerializedName("intakePhotos") val intakePhotos: List<String>? = null
 )
