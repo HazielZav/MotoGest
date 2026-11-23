@@ -1,14 +1,21 @@
 package com.TallerJC.motogest.ui.recepcion
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.TallerJC.motogest.data.local.entity.ClientEntity
+import com.TallerJC.motogest.data.local.entity.MediaEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
 import com.TallerJC.motogest.data.local.entity.WorkOrderEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
+import com.TallerJC.motogest.data.local.storage.LocalImageStorage
+import com.TallerJC.motogest.data.local.storage.StoredImageFile
+import com.TallerJC.motogest.data.repository.MediaRepository
 import com.TallerJC.motogest.data.repository.OperacionesRepository
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
+import com.TallerJC.motogest.domain.model.enums.MediaSyncStatus
+import com.TallerJC.motogest.domain.model.enums.MediaTag
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 import kotlinx.coroutines.CoroutineDispatcher
@@ -23,7 +30,9 @@ import java.util.UUID
 
 class RecepcionViewModel(
     private val repository: OperacionesRepository,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.Main
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Main,
+    private val mediaRepository: MediaRepository? = null,
+    private val imageStorage: LocalImageStorage? = null
 ) : ViewModel() {
 
     private val _estadoUi = MutableStateFlow(RecepcionUiState())
@@ -241,14 +250,26 @@ class RecepcionViewModel(
                 nuevaMotoPlaca = "",
                 nuevaMotoAnio = "",
                 nuevaMotoVin = "",
-                nuevaMotoFotoUri = "local://moto_${System.currentTimeMillis()}.jpg",
+                nuevaMotoFotoUri = "",
+                nuevaMotoFoto = null,
                 errorNuevaMoto = null
             )
         }
     }
 
     fun cerrarDialogoNuevaMoto() {
-        _estadoUi.update { it.copy(mostrarDialogoNuevaMoto = false, errorNuevaMoto = null) }
+        val fotoPendiente = _estadoUi.value.nuevaMotoFoto
+        if (fotoPendiente != null) {
+            imageStorage?.deleteLocalFile(fotoPendiente.localPath)
+        }
+        _estadoUi.update {
+            it.copy(
+                mostrarDialogoNuevaMoto = false,
+                nuevaMotoFoto = null,
+                nuevaMotoFotoUri = "",
+                errorNuevaMoto = null
+            )
+        }
     }
 
     fun actualizarNuevaMotoMarca(valor: String) = _estadoUi.update { it.copy(nuevaMotoMarca = valor, errorNuevaMoto = null) }
@@ -276,13 +297,15 @@ class RecepcionViewModel(
         }
 
         viewModelScope.launch(dispatcher) {
+            val fotoMoto = actual.nuevaMotoFoto
+            val photoUrlFinal = fotoMoto?.localUri ?: actual.nuevaMotoFotoUri
             val nuevaMoto = MotorcycleEntity(
                 id = UUID.randomUUID().toString(),
                 clientId = cliente.id,
                 brand = marca,
                 model = modelo,
                 color = color,
-                photoUrl = actual.nuevaMotoFotoUri,
+                photoUrl = photoUrlFinal,
                 plate = actual.nuevaMotoPlaca.trim().ifBlank { null },
                 year = actual.nuevaMotoAnio.toIntOrNull(),
                 vin = actual.nuevaMotoVin.trim().ifBlank { null },
@@ -290,10 +313,32 @@ class RecepcionViewModel(
                 isSynced = false
             )
             repository.registrarMoto(nuevaMoto)
+            if (fotoMoto != null) {
+                val ahora = System.currentTimeMillis()
+                mediaRepository?.saveImageMetadata(
+                    MediaEntity(
+                        orderId = null,
+                        motorcycleId = nuevaMoto.id,
+                        localUri = fotoMoto.localUri,
+                        localPath = fotoMoto.localPath,
+                        fileName = fotoMoto.fileName,
+                        mimeType = fotoMoto.mimeType,
+                        fileSizeBytes = fotoMoto.fileSizeBytes,
+                        mediaType = "IMAGE",
+                        tag = MediaTag.MOTO_PROFILE.name,
+                        syncStatus = MediaSyncStatus.PENDING.name,
+                        remoteUrl = null,
+                        createdAt = ahora,
+                        updatedAt = ahora
+                    )
+                )
+            }
             seleccionarMoto(nuevaMoto)
             _estadoUi.update {
                 it.copy(
                     mostrarDialogoNuevaMoto = false,
+                    nuevaMotoFoto = null,
+                    nuevaMotoFotoUri = "",
                     errorNuevaMoto = null
                 )
             }
@@ -325,7 +370,7 @@ class RecepcionViewModel(
                 placaOpcional = "",
                 anioOpcional = "",
                 vinOpcional = "",
-                fotoMotoUri = "local://moto_default.jpg"
+                fotoMotoUri = ""
             )
         }
     }
@@ -376,12 +421,119 @@ class RecepcionViewModel(
         }
     }
 
-    fun agregarFotoEvidenciaSimulada() {
+    // --- GESTIÓN LOCAL DE IMÁGENES (CÁMARA NATIVA + PHOTO PICKER -> filesDir/images) ---
+
+    fun prepararDestinoCamara(prefix: String): StoredImageFile? {
+        return try {
+            imageStorage?.createCameraImageDestination(prefix)
+        } catch (_: Exception) {
+            _estadoUi.update { it.copy(mensajeError = "No se pudo preparar el archivo local para la cámara.") }
+            null
+        }
+    }
+
+    fun cancelarCapturaCamara(localPath: String?) {
+        if (!localPath.isNullOrBlank()) {
+            imageStorage?.deleteLocalFile(localPath)
+        }
+    }
+
+    fun reportarErrorCamara(mensaje: String) {
+        _estadoUi.update { it.copy(mensajeError = mensaje) }
+    }
+
+    fun confirmarFotoCamaraMoto(destino: StoredImageFile) {
+        val finalizada = imageStorage?.finalizeCameraImage(destino) ?: destino
+        establecerFotoNuevaMoto(finalizada)
+    }
+
+    fun procesarFotoGaleriaMoto(sourceUri: Uri) {
+        val storage = imageStorage ?: return
+        viewModelScope.launch(dispatcher) {
+            _estadoUi.update { it.copy(procesandoImagen = true, errorNuevaMoto = null) }
+            val copiada = storage.copyPickedImageToInternalStorage(sourceUri, prefix = "moto")
+            _estadoUi.update { it.copy(procesandoImagen = false) }
+            if (copiada != null) {
+                establecerFotoNuevaMoto(copiada)
+            } else {
+                _estadoUi.update { it.copy(errorNuevaMoto = "No se pudo guardar la imagen seleccionada.") }
+            }
+        }
+    }
+
+    private fun establecerFotoNuevaMoto(nuevaFoto: StoredImageFile) {
+        val anterior = _estadoUi.value.nuevaMotoFoto
+        if (anterior != null && anterior.localPath != nuevaFoto.localPath) {
+            imageStorage?.deleteLocalFile(anterior.localPath)
+        }
+        _estadoUi.update {
+            it.copy(
+                nuevaMotoFoto = nuevaFoto,
+                nuevaMotoFotoUri = nuevaFoto.localUri,
+                errorNuevaMoto = null
+            )
+        }
+    }
+
+    fun quitarFotoNuevaMoto() {
+        val anterior = _estadoUi.value.nuevaMotoFoto
+        if (anterior != null) {
+            imageStorage?.deleteLocalFile(anterior.localPath)
+        }
+        _estadoUi.update {
+            it.copy(
+                nuevaMotoFoto = null,
+                nuevaMotoFotoUri = ""
+            )
+        }
+    }
+
+    fun confirmarFotoCamaraEvidencia(destino: StoredImageFile) {
+        val finalizada = imageStorage?.finalizeCameraImage(destino) ?: destino
+        agregarFotoEvidencia(finalizada)
+    }
+
+    fun procesarFotoGaleriaEvidencia(sourceUri: Uri) {
+        val storage = imageStorage ?: return
+        if (_estadoUi.value.fotosEvidenciaCapturadas.size >= MAX_FOTOS_EVIDENCIA) return
+        viewModelScope.launch(dispatcher) {
+            _estadoUi.update { it.copy(procesandoImagen = true, mensajeError = null) }
+            val copiada = storage.copyPickedImageToInternalStorage(sourceUri, prefix = "evidencia")
+            _estadoUi.update { it.copy(procesandoImagen = false) }
+            if (copiada != null) {
+                agregarFotoEvidencia(copiada)
+            } else {
+                _estadoUi.update { it.copy(mensajeError = "No se pudo copiar la imagen de galería al almacenamiento local.") }
+            }
+        }
+    }
+
+    fun agregarFotoEvidencia(foto: StoredImageFile) {
         _estadoUi.update { actual ->
-            if (actual.fotosEvidencia.size < 5) {
-                val nuevaFoto = "file://evidencia_${actual.fotosEvidencia.size + 1}.jpg"
-                actual.copy(fotosEvidencia = actual.fotosEvidencia + nuevaFoto)
-            } else actual
+            if (actual.fotosEvidenciaCapturadas.size < MAX_FOTOS_EVIDENCIA) {
+                val nuevaLista = actual.fotosEvidenciaCapturadas + foto
+                actual.copy(
+                    fotosEvidenciaCapturadas = nuevaLista,
+                    fotosEvidencia = nuevaLista.map { it.localUri },
+                    mensajeError = null
+                )
+            } else {
+                imageStorage?.deleteLocalFile(foto.localPath)
+                actual
+            }
+        }
+    }
+
+    fun eliminarFotoEvidencia(index: Int) {
+        _estadoUi.update { actual ->
+            if (index !in actual.fotosEvidenciaCapturadas.indices) return@update actual
+            val eliminada = actual.fotosEvidenciaCapturadas[index]
+            imageStorage?.deleteLocalFile(eliminada.localPath)
+            val nuevaLista = actual.fotosEvidenciaCapturadas.filterIndexed { i, _ -> i != index }
+            actual.copy(
+                fotosEvidenciaCapturadas = nuevaLista,
+                fotosEvidencia = nuevaLista.map { it.localUri }
+            )
         }
     }
 
@@ -495,6 +647,27 @@ class RecepcionViewModel(
 
             repository.registrarNuevaOrden(clienteEntity, motoEntity, ordenEntity)
 
+            if (actual.fotosEvidenciaCapturadas.isNotEmpty()) {
+                val mediaEntities = actual.fotosEvidenciaCapturadas.map { foto ->
+                    MediaEntity(
+                        orderId = ordenEntity.id,
+                        motorcycleId = motoEntity.id,
+                        localUri = foto.localUri,
+                        localPath = foto.localPath,
+                        fileName = foto.fileName,
+                        mimeType = foto.mimeType,
+                        fileSizeBytes = foto.fileSizeBytes,
+                        mediaType = "IMAGE",
+                        tag = MediaTag.INTAKE_EVIDENCE.name,
+                        syncStatus = MediaSyncStatus.PENDING.name,
+                        remoteUrl = null,
+                        createdAt = ahora,
+                        updatedAt = ahora
+                    )
+                }
+                mediaRepository?.saveImagesMetadata(mediaEntities)
+            }
+
             // Reiniciamos el formulario manteniendo listas
             _estadoUi.update {
                 RecepcionUiState(
@@ -589,14 +762,23 @@ class RecepcionViewModel(
     }
 
     companion object {
+        const val MAX_FOTOS_EVIDENCIA = 5
+
         fun provideFactory(
             repository: OperacionesRepository,
+            mediaRepository: MediaRepository? = null,
+            imageStorage: LocalImageStorage? = null,
             dispatcher: CoroutineDispatcher = Dispatchers.Main
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return RecepcionViewModel(repository, dispatcher) as T
+                    return RecepcionViewModel(
+                        repository = repository,
+                        dispatcher = dispatcher,
+                        mediaRepository = mediaRepository,
+                        imageStorage = imageStorage
+                    ) as T
                 }
             }
     }

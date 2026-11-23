@@ -86,7 +86,11 @@ fun MotoGestApp(
             // --- RECEPCIÓN ---
             composable(Ruta.Recepcion.ruta) {
                 val recepcionViewModel: RecepcionViewModel = viewModel(
-                    factory = RecepcionViewModel.provideFactory(operacionesRepository)
+                    factory = RecepcionViewModel.provideFactory(
+                        repository = operacionesRepository,
+                        mediaRepository = appContainer.mediaRepository,
+                        imageStorage = appContainer.localImageStorage
+                    )
                 )
                 PantallaRecepcion(viewModel = recepcionViewModel)
             }

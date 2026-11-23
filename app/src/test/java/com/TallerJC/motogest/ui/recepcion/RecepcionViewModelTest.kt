@@ -1,5 +1,6 @@
 package com.TallerJC.motogest.ui.recepcion
 
+import android.net.Uri
 import com.TallerJC.motogest.data.local.dao.WorkOrderDao
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
@@ -7,10 +8,16 @@ import com.TallerJC.motogest.data.local.entity.SparePartEntity
 import com.TallerJC.motogest.data.local.entity.WorkItemEntity
 import com.TallerJC.motogest.data.local.entity.WorkOrderEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
+import com.TallerJC.motogest.data.local.storage.LocalImageStorage
+import com.TallerJC.motogest.data.local.storage.StoredImageFile
+import com.TallerJC.motogest.data.repository.LocalMediaRepository
 import com.TallerJC.motogest.data.repository.OperacionesRepository
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
+import com.TallerJC.motogest.domain.model.enums.MediaSyncStatus
+import com.TallerJC.motogest.domain.model.enums.MediaTag
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.fake.FakeMediaDao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -397,5 +404,124 @@ class RecepcionViewModelTest {
         val motoEnDb = fakeDao.motorcycles.find { it.model == "Pulsar NS200" }
         assertNotNull(motoEnDb)
         assertEquals(cliente.id, motoEnDb?.clientId)
+    }
+
+    @Test
+    fun testPersistenciaLocalImagenesEnMotoYOrdenConEstadoPending() = runBlocking {
+        val fakeMediaDao = FakeMediaDao()
+        val deletedFiles = mutableListOf<String>()
+        val fakeStorage = object : LocalImageStorage {
+            private var counter = 0
+            override fun createCameraImageDestination(prefix: String): StoredImageFile {
+                counter++
+                val name = "${prefix}_$counter.jpg"
+                return StoredImageFile(
+                    localUri = "content://com.TallerJC.motogest.fileprovider/motogest_images/$name",
+                    localPath = "/files/images/$name",
+                    fileName = name,
+                    fileSizeBytes = 0L
+                )
+            }
+
+            override fun finalizeCameraImage(destination: StoredImageFile): StoredImageFile =
+                destination.copy(fileSizeBytes = 1500L)
+
+            override suspend fun copyPickedImageToInternalStorage(sourceUri: Uri, prefix: String): StoredImageFile =
+                createCameraImageDestination(prefix).copy(fileSizeBytes = 2500L)
+
+            override fun deleteLocalFile(localPath: String): Boolean {
+                deletedFiles.add(localPath)
+                return true
+            }
+        }
+        val mediaRepo = LocalMediaRepository(fakeMediaDao, fakeStorage)
+
+        val cliente = ClientEntity(id = "c_img", name = "Jorge Luna", phone = "4457778899")
+        fakeDao.insertClient(cliente)
+
+        val viewModel = RecepcionViewModel(
+            repository = repository,
+            dispatcher = Dispatchers.Unconfined,
+            mediaRepository = mediaRepo,
+            imageStorage = fakeStorage
+        )
+        viewModel.seleccionarCliente(cliente)
+
+        // 1. Alta de moto con foto persistente
+        viewModel.abrirDialogoNuevaMoto()
+        viewModel.actualizarNuevaMotoMarca("Honda")
+        viewModel.actualizarNuevaMotoModelo("Cargo 150")
+        viewModel.actualizarNuevaMotoColor("Blanco")
+        val destinoMoto = viewModel.prepararDestinoCamara("moto")!!
+        viewModel.confirmarFotoCamaraMoto(destinoMoto)
+        assertNotNull(viewModel.estadoUi.value.nuevaMotoFoto)
+        assertEquals(1500L, viewModel.estadoUi.value.nuevaMotoFoto?.fileSizeBytes)
+
+        viewModel.guardarYSeleccionarNuevaMoto()
+        val motoGuardada = fakeDao.motorcycles.first { it.model == "Cargo 150" }
+        assertEquals(destinoMoto.localUri, motoGuardada.photoUrl)
+
+        val mediaMoto = fakeMediaDao.items.firstOrNull { it.tag == MediaTag.MOTO_PROFILE.name }
+        assertNotNull(mediaMoto)
+        assertNull(mediaMoto?.orderId)
+        assertEquals(motoGuardada.id, mediaMoto?.motorcycleId)
+        assertEquals(MediaSyncStatus.PENDING.name, mediaMoto?.syncStatus)
+        assertNull(mediaMoto?.remoteUrl)
+
+        // 2. Evidencias de orden: agregar 2, quitar 1 (verifica limpieza física) y guardar orden
+        val ev1 = viewModel.prepararDestinoCamara("evidencia")!!
+        viewModel.confirmarFotoCamaraEvidencia(ev1)
+        val ev2 = viewModel.prepararDestinoCamara("evidencia")!!
+        viewModel.confirmarFotoCamaraEvidencia(ev2)
+        assertEquals(2, viewModel.estadoUi.value.fotosEvidencia.size)
+
+        viewModel.eliminarFotoEvidencia(0)
+        assertEquals(1, viewModel.estadoUi.value.fotosEvidencia.size)
+        assertTrue(deletedFiles.contains(ev1.localPath))
+
+        viewModel.actualizarFallaReportada("Fuga de aceite en retén")
+        viewModel.guardarOrden()
+
+        val ordenGuardada = fakeDao.orders.first { it.clientId == cliente.id }
+        assertEquals(listOf(ev2.localUri), ordenGuardada.intakePhotos)
+
+        val mediaEvidencia = fakeMediaDao.items.filter { it.orderId == ordenGuardada.id }
+        assertEquals(1, mediaEvidencia.size)
+        assertEquals(ev2.localPath, mediaEvidencia.first().localPath)
+        assertEquals(MediaTag.INTAKE_EVIDENCE.name, mediaEvidencia.first().tag)
+        assertEquals(MediaSyncStatus.PENDING.name, mediaEvidencia.first().syncStatus)
+        assertNull(mediaEvidencia.first().remoteUrl)
+    }
+
+    @Test
+    fun testCancelarDialogoNuevaMotoEliminaFotoTemporalNoGuardada() = runBlocking {
+        val deletedFiles = mutableListOf<String>()
+        val fakeStorage = object : LocalImageStorage {
+            override fun createCameraImageDestination(prefix: String) = StoredImageFile(
+                localUri = "content://com.TallerJC.motogest.fileprovider/motogest_images/tmp.jpg",
+                localPath = "/files/images/tmp.jpg",
+                fileName = "tmp.jpg"
+            )
+            override fun finalizeCameraImage(destination: StoredImageFile) = destination.copy(fileSizeBytes = 900L)
+            override suspend fun copyPickedImageToInternalStorage(sourceUri: Uri, prefix: String) = null
+            override fun deleteLocalFile(localPath: String): Boolean {
+                deletedFiles.add(localPath)
+                return true
+            }
+        }
+        val viewModel = RecepcionViewModel(
+            repository = repository,
+            dispatcher = Dispatchers.Unconfined,
+            mediaRepository = LocalMediaRepository(FakeMediaDao(), fakeStorage),
+            imageStorage = fakeStorage
+        )
+
+        viewModel.abrirDialogoNuevaMoto()
+        val dest = viewModel.prepararDestinoCamara("moto")!!
+        viewModel.confirmarFotoCamaraMoto(dest)
+        viewModel.cerrarDialogoNuevaMoto()
+
+        assertNull(viewModel.estadoUi.value.nuevaMotoFoto)
+        assertTrue(deletedFiles.contains(dest.localPath))
     }
 }

@@ -5,11 +5,15 @@ import com.TallerJC.motogest.data.local.AppDatabase
 import com.TallerJC.motogest.data.local.dao.MediaDao
 import com.TallerJC.motogest.data.local.dao.NotificationDao
 import com.TallerJC.motogest.data.local.dao.WorkOrderDao
+import com.TallerJC.motogest.data.local.storage.AndroidLocalImageStorage
+import com.TallerJC.motogest.data.local.storage.LocalImageStorage
 import com.TallerJC.motogest.data.remote.api.RetrofitClient
 import com.TallerJC.motogest.data.remote.datasource.RemoteWorkOrderDataSource
 import com.TallerJC.motogest.data.remote.datasource.RemoteWorkOrderDataSourceImpl
 import com.TallerJC.motogest.data.repository.GerenciaRepository
 import com.TallerJC.motogest.data.repository.GerenciaRepositoryImpl
+import com.TallerJC.motogest.data.repository.LocalMediaRepository
+import com.TallerJC.motogest.data.repository.MediaRepository
 import com.TallerJC.motogest.data.repository.OperacionesRepository
 
 interface AppContainer {
@@ -17,6 +21,8 @@ interface AppContainer {
     val workOrderDao: WorkOrderDao
     val notificationDao: NotificationDao
     val mediaDao: MediaDao
+    val localImageStorage: LocalImageStorage
+    val mediaRepository: MediaRepository
     val remoteDataSource: RemoteWorkOrderDataSource
     val operacionesRepository: OperacionesRepository
     val gerenciaRepository: GerenciaRepository
@@ -37,6 +43,14 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val mediaDao: MediaDao by lazy {
         database.mediaDao()
+    }
+
+    override val localImageStorage: LocalImageStorage by lazy {
+        AndroidLocalImageStorage(context.applicationContext)
+    }
+
+    override val mediaRepository: MediaRepository by lazy {
+        LocalMediaRepository(mediaDao, localImageStorage)
     }
 
     override val remoteDataSource: RemoteWorkOrderDataSource by lazy {

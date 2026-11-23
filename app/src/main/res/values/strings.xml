@@ -116,6 +116,12 @@
     <string name="recepcion_btn_cambiar_moto">Cambiar</string>
     <string name="recepcion_foto_capturada">Foto adjuntada correctamente</string>
     <string name="recepcion_foto_tomar">Tomar / Seleccionar Foto</string>
+    <string name="recepcion_btn_camara">Cámara</string>
+    <string name="recepcion_btn_galeria">Galería</string>
+    <string name="recepcion_desc_eliminar_foto">Quitar foto</string>
+    <string name="recepcion_desc_miniatura_moto">Foto de la motocicleta</string>
+    <string name="recepcion_desc_miniatura_evidencia">Evidencia fotográfica #%1$d</string>
+    <string name="recepcion_error_sin_camara">No se encontró una aplicación de cámara disponible en el dispositivo.</string>
     <string name="recepcion_btn_sincronizar_nube">Sincronizar Nube</string>
 
     <!-- Pantalla Taller -->

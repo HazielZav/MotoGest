@@ -1,6 +1,11 @@
 package com.TallerJC.motogest.ui.recepcion
 
+import android.content.ActivityNotFoundException
 import android.content.res.Configuration
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -9,6 +14,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,9 +25,12 @@ import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -29,21 +38,95 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.TallerJC.motogest.R
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
+import com.TallerJC.motogest.data.local.storage.StoredImageFile
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 import com.TallerJC.motogest.ui.util.getLabelRes
 import java.text.NumberFormat
 import java.util.Locale
 
+private const val DESTINO_FOTO_MOTO = "MOTO"
+private const val DESTINO_FOTO_EVIDENCIA = "EVIDENCIA"
+
 @Composable
 fun PantallaRecepcion(
     viewModel: RecepcionViewModel
 ) {
     val estadoUi by viewModel.estadoUi.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    // Estado persistente entre recomposiciones/rotación mientras se usa la cámara nativa o el Photo Picker
+    var capturaPendienteUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var capturaPendientePath by rememberSaveable { mutableStateOf<String?>(null) }
+    var capturaPendienteNombre by rememberSaveable { mutableStateOf<String?>(null) }
+    var destinoCaptura by rememberSaveable { mutableStateOf(DESTINO_FOTO_EVIDENCIA) }
+
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { exito ->
+        val uri = capturaPendienteUri
+        val path = capturaPendientePath
+        val fileName = capturaPendienteNombre
+        capturaPendienteUri = null
+        capturaPendientePath = null
+        capturaPendienteNombre = null
+
+        if (exito && uri != null && path != null && fileName != null) {
+            val destino = StoredImageFile(
+                localUri = uri,
+                localPath = path,
+                fileName = fileName
+            )
+            if (destinoCaptura == DESTINO_FOTO_MOTO) {
+                viewModel.confirmarFotoCamaraMoto(destino)
+            } else {
+                viewModel.confirmarFotoCamaraEvidencia(destino)
+            }
+        } else {
+            viewModel.cancelarCapturaCamara(path)
+        }
+    }
+
+    val pickVisualMediaLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { sourceUri ->
+        if (sourceUri != null) {
+            if (destinoCaptura == DESTINO_FOTO_MOTO) {
+                viewModel.procesarFotoGaleriaMoto(sourceUri)
+            } else {
+                viewModel.procesarFotoGaleriaEvidencia(sourceUri)
+            }
+        }
+    }
+
+    fun lanzarCamaraNativa(destino: String, prefix: String) {
+        val archivoDestino = viewModel.prepararDestinoCamara(prefix) ?: return
+        destinoCaptura = destino
+        capturaPendienteUri = archivoDestino.localUri
+        capturaPendientePath = archivoDestino.localPath
+        capturaPendienteNombre = archivoDestino.fileName
+        try {
+            takePictureLauncher.launch(Uri.parse(archivoDestino.localUri))
+        } catch (_: ActivityNotFoundException) {
+            viewModel.cancelarCapturaCamara(archivoDestino.localPath)
+            capturaPendienteUri = null
+            capturaPendientePath = null
+            capturaPendienteNombre = null
+            viewModel.reportarErrorCamara(context.getString(R.string.recepcion_error_sin_camara))
+        }
+    }
+
+    fun lanzarGaleriaNativa(destino: String) {
+        destinoCaptura = destino
+        pickVisualMediaLauncher.launch(
+            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+        )
+    }
 
     PantallaRecepcionContenido(
         estadoUi = estadoUi,
@@ -70,7 +153,9 @@ fun PantallaRecepcion(
         onNuevaMotoPlacaCambio = viewModel::actualizarNuevaMotoPlaca,
         onNuevaMotoAnioCambio = viewModel::actualizarNuevaMotoAnio,
         onNuevaMotoVinCambio = viewModel::actualizarNuevaMotoVin,
-        onNuevaMotoFotoCambio = viewModel::actualizarNuevaMotoFoto,
+        onTomarFotoNuevaMoto = { lanzarCamaraNativa(DESTINO_FOTO_MOTO, "moto") },
+        onElegirFotoNuevaMoto = { lanzarGaleriaNativa(DESTINO_FOTO_MOTO) },
+        onQuitarFotoNuevaMoto = viewModel::quitarFotoNuevaMoto,
         onGuardarNuevaMoto = viewModel::guardarYSeleccionarNuevaMoto,
         onVerHistorialMoto = viewModel::verHistorialMoto,
         onCerrarHistorialMoto = viewModel::cerrarModalHistorial,
@@ -83,7 +168,9 @@ fun PantallaRecepcion(
         onVinCambio = viewModel::actualizarVin,
         onServicioSeleccionado = viewModel::seleccionarServicio,
         onFallaCambio = viewModel::actualizarFallaReportada,
-        onAgregarFoto = viewModel::agregarFotoEvidenciaSimulada,
+        onTomarFotoEvidencia = { lanzarCamaraNativa(DESTINO_FOTO_EVIDENCIA, "evidencia") },
+        onElegirFotoEvidencia = { lanzarGaleriaNativa(DESTINO_FOTO_EVIDENCIA) },
+        onEliminarFotoEvidencia = viewModel::eliminarFotoEvidencia,
         onNotasDanosCambio = viewModel::actualizarNotasDanos,
         onModalidadCambio = viewModel::cambiarModalidadEntrega,
         onDescartarAlertaDomicilio = viewModel::descartarAlertaDomicilio,
@@ -126,7 +213,9 @@ fun PantallaRecepcionContenido(
     onNuevaMotoPlacaCambio: (String) -> Unit = {},
     onNuevaMotoAnioCambio: (String) -> Unit = {},
     onNuevaMotoVinCambio: (String) -> Unit = {},
-    onNuevaMotoFotoCambio: (String) -> Unit = {},
+    onTomarFotoNuevaMoto: () -> Unit = {},
+    onElegirFotoNuevaMoto: () -> Unit = {},
+    onQuitarFotoNuevaMoto: () -> Unit = {},
     onGuardarNuevaMoto: () -> Unit = {},
     onRegistrarNuevaMoto: () -> Unit = onAbrirDialogoNuevaMoto,
     onVerHistorialMoto: (MotorcycleEntity) -> Unit = {},
@@ -140,7 +229,9 @@ fun PantallaRecepcionContenido(
     onVinCambio: (String) -> Unit,
     onServicioSeleccionado: (ServiceType) -> Unit,
     onFallaCambio: (String) -> Unit,
-    onAgregarFoto: () -> Unit,
+    onTomarFotoEvidencia: () -> Unit = {},
+    onElegirFotoEvidencia: () -> Unit = {},
+    onEliminarFotoEvidencia: (Int) -> Unit = {},
     onNotasDanosCambio: (String) -> Unit,
     onModalidadCambio: (DeliveryType) -> Unit,
     onDescartarAlertaDomicilio: () -> Unit,
@@ -624,7 +715,21 @@ fun PantallaRecepcionContenido(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    Icon(Icons.Default.TwoWheeler, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(32.dp))
+                                    val fotoValida = estadoUi.motoSeleccionada.photoUrl.let {
+                                        it.isNotBlank() && !it.startsWith("local://")
+                                    }
+                                    if (fotoValida) {
+                                        AsyncImage(
+                                            model = estadoUi.motoSeleccionada.photoUrl,
+                                            contentDescription = stringResource(R.string.recepcion_desc_miniatura_moto),
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                        )
+                                    } else {
+                                        Icon(Icons.Default.TwoWheeler, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(32.dp))
+                                    }
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = stringResource(R.string.recepcion_moto_seleccionada_label),
@@ -698,7 +803,7 @@ fun PantallaRecepcionContenido(
                         maxLines = 4
                     )
 
-                    // Evidencia fotográfica
+                    // Evidencia fotográfica (Cámara nativa + Photo Picker con miniaturas locales)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -707,28 +812,70 @@ fun PantallaRecepcionContenido(
                         Text(
                             text = stringResource(R.string.recepcion_seccion_evidencia, estadoUi.fotosEvidencia.size),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
                         )
-                        TextButton(
-                            onClick = onAgregarFoto,
-                            enabled = estadoUi.fotosEvidencia.size < 5
-                        ) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(stringResource(R.string.recepcion_desc_foto))
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            TextButton(
+                                onClick = onTomarFotoEvidencia,
+                                enabled = estadoUi.fotosEvidencia.size < RecepcionViewModel.MAX_FOTOS_EVIDENCIA && !estadoUi.procesandoImagen
+                            ) {
+                                Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(stringResource(R.string.recepcion_btn_camara))
+                            }
+                            TextButton(
+                                onClick = onElegirFotoEvidencia,
+                                enabled = estadoUi.fotosEvidencia.size < RecepcionViewModel.MAX_FOTOS_EVIDENCIA && !estadoUi.procesandoImagen
+                            ) {
+                                Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(stringResource(R.string.recepcion_btn_galeria))
+                            }
                         }
                     }
 
+                    if (estadoUi.procesandoImagen) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
+
                     if (estadoUi.fotosEvidencia.isNotEmpty()) {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(estadoUi.fotosEvidencia) { foto ->
-                                AssistChip(
-                                    onClick = { },
-                                    label = { Text(foto.substringAfterLast("/")) },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            itemsIndexed(
+                                items = estadoUi.fotosEvidencia,
+                                key = { index, uri -> "${index}_$uri" }
+                            ) { index, fotoUri ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(92.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                ) {
+                                    AsyncImage(
+                                        model = fotoUri,
+                                        contentDescription = stringResource(R.string.recepcion_desc_miniatura_evidencia, index + 1),
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                    Surface(
+                                        onClick = { onEliminarFotoEvidencia(index) },
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.65f),
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(4.dp)
+                                            .size(24.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = stringResource(R.string.recepcion_desc_eliminar_foto),
+                                                tint = MaterialTheme.colorScheme.surface,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
                                     }
-                                )
+                                }
                             }
                         }
                     }
@@ -1060,21 +1207,66 @@ fun PantallaRecepcionContenido(
                                 singleLine = true
                             )
                         }
-                        // Botón de captura / simulación de foto
-                        OutlinedButton(
-                            onClick = {
-                                onNuevaMotoFotoCambio("file://moto_${System.currentTimeMillis()}.jpg")
-                            },
-                            modifier = Modifier.fillMaxWidth()
+                        // Captura nativa / galería de foto de la motocicleta con previsualización
+                        if (estadoUi.nuevaMotoFoto != null) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(140.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                            ) {
+                                AsyncImage(
+                                    model = estadoUi.nuevaMotoFoto.localUri,
+                                    contentDescription = stringResource(R.string.recepcion_desc_miniatura_moto),
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                Surface(
+                                    onClick = onQuitarFotoNuevaMoto,
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.65f),
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(6.dp)
+                                        .size(28.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = stringResource(R.string.recepcion_desc_eliminar_foto),
+                                            tint = MaterialTheme.colorScheme.surface,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (estadoUi.procesandoImagen) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                if (estadoUi.nuevaMotoFotoUri.startsWith("file://"))
-                                    stringResource(R.string.recepcion_foto_capturada)
-                                else
-                                    stringResource(R.string.recepcion_foto_tomar)
-                            )
+                            OutlinedButton(
+                                onClick = onTomarFotoNuevaMoto,
+                                enabled = !estadoUi.procesandoImagen,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(stringResource(R.string.recepcion_btn_camara))
+                            }
+                            OutlinedButton(
+                                onClick = onElegirFotoNuevaMoto,
+                                enabled = !estadoUi.procesandoImagen,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(stringResource(R.string.recepcion_btn_galeria))
+                            }
                         }
                     }
                 },
@@ -1412,7 +1604,6 @@ fun PantallaRecepcionPreview() {
             onVinCambio = {},
             onServicioSeleccionado = {},
             onFallaCambio = {},
-            onAgregarFoto = {},
             onNotasDanosCambio = {},
             onModalidadCambio = {},
             onDescartarAlertaDomicilio = {},
