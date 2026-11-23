@@ -11,15 +11,29 @@ import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.data.remote.datasource.RemoteWorkOrderDataSource
 import com.TallerJC.motogest.data.remote.mapper.toDto
 import com.TallerJC.motogest.data.remote.mapper.toEntity
+import com.TallerJC.motogest.data.sync.SyncCooldownStore
+import com.TallerJC.motogest.data.sync.SyncScheduler
+import com.TallerJC.motogest.data.sync.SyncState
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class OperacionesRepository(
     private val workOrderDao: WorkOrderDao,
-    private val remoteDataSource: RemoteWorkOrderDataSource? = null
+    private val remoteDataSource: RemoteWorkOrderDataSource? = null,
+    private val syncScheduler: SyncScheduler? = null,
+    private val syncCooldownStore: SyncCooldownStore? = null,
+    private val ahoraProvider: () -> Long = { System.currentTimeMillis() }
 ) : WorkOrderRepository {
+
+    private val syncMutex = Mutex()
+
+    val estadoSincronizacion: Flow<SyncState>
+        get() = syncScheduler?.estadoSincronizacion ?: flowOf(SyncState.IDLE)
 
     override fun obtenerTodasLasOrdenes(): Flow<List<WorkOrderWithDetails>> {
         return workOrderDao.getAllOrdersWithDetails()
@@ -47,23 +61,21 @@ class OperacionesRepository(
         orden: WorkOrderEntity
     ) {
         workOrderDao.insertarRecepcionCompleta(cliente, moto, orden)
-        if (!cliente.isSynced) subirYMarcarCliente(cliente)
-        if (!moto.isSynced) subirYMarcarMoto(moto)
-        subirYMarcarOrden(orden)
+        syncScheduler?.programarSincronizacionCambios()
     }
 
     override suspend fun registrarCliente(cliente: ClientEntity) {
         workOrderDao.insertClient(cliente)
-        subirYMarcarCliente(cliente)
+        syncScheduler?.programarSincronizacionCambios()
     }
 
     override suspend fun registrarMoto(moto: MotorcycleEntity) {
         workOrderDao.insertMotorcycle(moto)
-        subirYMarcarMoto(moto)
+        syncScheduler?.programarSincronizacionCambios()
     }
 
     override suspend fun cambiarEstadoOrden(ordenActual: WorkOrderEntity, nuevoEstado: OrderStatus) {
-        val ahora = System.currentTimeMillis()
+        val ahora = ahoraProvider()
         workOrderDao.updateOrderStatus(
             orderId = ordenActual.id,
             status = nuevoEstado.name,
@@ -72,34 +84,33 @@ class OperacionesRepository(
             deliveredAt = if (nuevoEstado == OrderStatus.ENTREGADA) ahora else null,
             updatedAt = ahora
         )
-        workOrderDao.getOrderById(ordenActual.id)?.let { subirYMarcarOrden(it) }
+        syncScheduler?.programarSincronizacionCambios()
     }
 
     override suspend fun agregarManoDeObra(ordenActual: WorkOrderEntity, descripcion: String, costo: Double) {
         workOrderDao.addWorkItemAndUpdateTotals(
             WorkItemEntity(orderId = ordenActual.id, description = descripcion, cost = costo)
         )
-        workOrderDao.getOrderById(ordenActual.id)?.let { subirYMarcarOrden(it) }
+        syncScheduler?.programarSincronizacionCambios()
     }
 
     override suspend fun agregarRefaccion(ordenActual: WorkOrderEntity, nombrePieza: String, costo: Double) {
         workOrderDao.addSparePartAndUpdateTotals(
             SparePartEntity(orderId = ordenActual.id, partName = nombrePieza, cost = costo)
         )
-        workOrderDao.getOrderById(ordenActual.id)?.let { subirYMarcarOrden(it) }
+        syncScheduler?.programarSincronizacionCambios()
     }
 
     override suspend fun actualizarNotasYVinTaller(ordenActual: WorkOrderEntity, recomendaciones: String, nuevoVin: String?) {
         if (!nuevoVin.isNullOrBlank()) {
             workOrderDao.updateMotorcycleVin(ordenActual.motorcycleId, nuevoVin)
-            workOrderDao.getMotorcycleById(ordenActual.motorcycleId)?.let { subirYMarcarMoto(it) }
         }
         workOrderDao.updateRecommendations(ordenActual.id, recomendaciones)
-        workOrderDao.getOrderById(ordenActual.id)?.let { subirYMarcarOrden(it) }
+        syncScheduler?.programarSincronizacionCambios()
     }
 
     override suspend fun actualizarCostoEnvio(ordenActual: WorkOrderEntity, nuevoCostoEnvio: Double) {
-        val ahora = System.currentTimeMillis()
+        val ahora = ahoraProvider()
         val labor = workOrderDao.getLaborTotal(ordenActual.id)
         val parts = workOrderDao.getPartsTotal(ordenActual.id)
         val nuevoTotal = labor + parts + nuevoCostoEnvio
@@ -112,7 +123,7 @@ class OperacionesRepository(
             isSynced = false
         )
         workOrderDao.insertOrder(ordenActualizada)
-        subirYMarcarOrden(ordenActualizada)
+        syncScheduler?.programarSincronizacionCambios()
     }
 
     override suspend fun marcarOrdenEntregada(
@@ -129,24 +140,31 @@ class OperacionesRepository(
             deliveryType = modalidad,
             deliveryCost = costoEnvio
         )
-        workOrderDao.getOrderById(ordenActual.id)?.let { subirYMarcarOrden(it) }
-        if (modalidad == DeliveryType.DOMICILIO.name && costoEnvio > 0.0) {
-            workOrderDao.getClientById(clienteActual.id)?.let { subirYMarcarCliente(it) }
-        }
+        syncScheduler?.programarSincronizacionCambios()
     }
 
     override suspend fun eliminarOrden(orderId: String) {
         workOrderDao.deleteOrderWithPendingSync(orderId)
-        if (remoteDataSource?.deleteOrder(orderId) == true) {
-            workOrderDao.deletePendingDeletion(orderId)
-        }
+        syncScheduler?.programarSincronizacionCambios()
     }
 
-    // Sube primero los cambios locales pendientes y luego descarga los datos remotos sin pisar cambios sin subir
     override suspend fun sincronizarConNube(): Boolean {
-        val remote = remoteDataSource ?: return true
+        val exito = sincronizarInterno(forzarPull = true)
+        if (!exito && hayCambiosPendientes()) {
+            syncScheduler?.programarSincronizacionCambios()
+        }
+        return exito
+    }
 
-        return try {
+    suspend fun sincronizarAutomaticamente(forzarPull: Boolean = false): Boolean {
+        return sincronizarInterno(forzarPull = forzarPull)
+    }
+
+    // Ejecuta una sola sincronizacion a la vez para evitar colisiones entre worker y boton manual
+    private suspend fun sincronizarInterno(forzarPull: Boolean): Boolean = syncMutex.withLock {
+        val remote = remoteDataSource ?: return@withLock true
+
+        return@withLock try {
             var todoExitoso = true
             val idsPendientesEliminar = mutableSetOf<String>()
 
@@ -162,56 +180,28 @@ class OperacionesRepository(
             }
 
             for (cliente in workOrderDao.getUnsyncedClients()) {
-                if (!subirYMarcarCliente(cliente)) todoExitoso = false
+                if (!subirYMarcarCliente(remote, cliente)) todoExitoso = false
             }
 
             for (moto in workOrderDao.getUnsyncedMotorcycles()) {
-                if (!subirYMarcarMoto(moto)) todoExitoso = false
+                if (!subirYMarcarMoto(remote, moto)) todoExitoso = false
             }
 
             for (orden in workOrderDao.getUnsyncedOrders()) {
-                if (!subirYMarcarOrden(orden)) todoExitoso = false
+                if (!subirYMarcarOrden(remote, orden)) todoExitoso = false
             }
 
-            val clientesRemotos = remote.fetchClients().getOrElse {
-                todoExitoso = false
-                emptyList()
-            }
-            val idsClientesPendientes = workOrderDao.getUnsyncedClients().map { it.id }.toSet()
-            val clientesParaGuardar = clientesRemotos
-                .filter { it.id !in idsClientesPendientes }
-                .map { it.toEntity() }
-            if (clientesParaGuardar.isNotEmpty()) {
-                workOrderDao.insertClients(clientesParaGuardar)
-            }
+            val ahora = ahoraProvider()
+            val ultimoPull = syncCooldownStore?.obtenerUltimoPullMs() ?: 0L
+            val debeHacerPull = forzarPull || (ahora - ultimoPull) >= PULL_COOLDOWN_MS
 
-            val motosRemotas = remote.fetchMotorcycles().getOrElse {
-                todoExitoso = false
-                emptyList()
-            }
-            val idsMotosPendientes = workOrderDao.getUnsyncedMotorcycles().map { it.id }.toSet()
-            val motosParaGuardar = motosRemotas
-                .filter { it.id !in idsMotosPendientes && workOrderDao.getClientById(it.clientId) != null }
-                .map { it.toEntity() }
-            if (motosParaGuardar.isNotEmpty()) {
-                workOrderDao.insertMotorcycles(motosParaGuardar)
-            }
-
-            val ordenesRemotas = remote.fetchOrders().getOrElse {
-                todoExitoso = false
-                emptyList()
-            }
-            val idsOrdenesPendientes = workOrderDao.getUnsyncedOrders().map { it.id }.toSet()
-            val ordenesParaGuardar = ordenesRemotas
-                .filter {
-                    it.id !in idsOrdenesPendientes &&
-                        it.id !in idsPendientesEliminar &&
-                        workOrderDao.getClientById(it.clientId) != null &&
-                        workOrderDao.getMotorcycleById(it.motorcycleId) != null
+            if (debeHacerPull) {
+                val pullExitoso = descargarDesdeNube(remote, idsPendientesEliminar)
+                if (pullExitoso) {
+                    syncCooldownStore?.guardarUltimoPullMs(ahora)
+                } else {
+                    todoExitoso = false
                 }
-                .map { dto -> dto.toEntity(workOrderDao.getOrderById(dto.id)) }
-            if (ordenesParaGuardar.isNotEmpty()) {
-                workOrderDao.insertOrders(ordenesParaGuardar)
             }
 
             todoExitoso
@@ -222,8 +212,64 @@ class OperacionesRepository(
         }
     }
 
-    private suspend fun subirYMarcarCliente(cliente: ClientEntity): Boolean {
-        val remote = remoteDataSource ?: return true
+    private suspend fun descargarDesdeNube(
+        remote: RemoteWorkOrderDataSource,
+        idsPendientesEliminar: Set<String>
+    ): Boolean {
+        var pullExitoso = true
+
+        val clientesRemotos = remote.fetchClients().getOrElse {
+            pullExitoso = false
+            emptyList()
+        }
+        val idsClientesPendientes = workOrderDao.getUnsyncedClients().map { it.id }.toSet()
+        val clientesParaGuardar = clientesRemotos
+            .filter { it.id !in idsClientesPendientes }
+            .map { it.toEntity() }
+        if (clientesParaGuardar.isNotEmpty()) {
+            workOrderDao.insertClients(clientesParaGuardar)
+        }
+
+        val motosRemotas = remote.fetchMotorcycles().getOrElse {
+            pullExitoso = false
+            emptyList()
+        }
+        val idsMotosPendientes = workOrderDao.getUnsyncedMotorcycles().map { it.id }.toSet()
+        val motosParaGuardar = motosRemotas
+            .filter { it.id !in idsMotosPendientes && workOrderDao.getClientById(it.clientId) != null }
+            .map { it.toEntity() }
+        if (motosParaGuardar.isNotEmpty()) {
+            workOrderDao.insertMotorcycles(motosParaGuardar)
+        }
+
+        val ordenesRemotas = remote.fetchOrders().getOrElse {
+            pullExitoso = false
+            emptyList()
+        }
+        val idsOrdenesPendientes = workOrderDao.getUnsyncedOrders().map { it.id }.toSet()
+        val ordenesParaGuardar = ordenesRemotas
+            .filter {
+                it.id !in idsOrdenesPendientes &&
+                    it.id !in idsPendientesEliminar &&
+                    workOrderDao.getClientById(it.clientId) != null &&
+                    workOrderDao.getMotorcycleById(it.motorcycleId) != null
+            }
+            .map { dto -> dto.toEntity(workOrderDao.getOrderById(dto.id)) }
+        if (ordenesParaGuardar.isNotEmpty()) {
+            workOrderDao.insertOrders(ordenesParaGuardar)
+        }
+
+        return pullExitoso
+    }
+
+    private suspend fun hayCambiosPendientes(): Boolean {
+        return workOrderDao.getPendingDeletions().isNotEmpty() ||
+            workOrderDao.getUnsyncedClients().isNotEmpty() ||
+            workOrderDao.getUnsyncedMotorcycles().isNotEmpty() ||
+            workOrderDao.getUnsyncedOrders().isNotEmpty()
+    }
+
+    private suspend fun subirYMarcarCliente(remote: RemoteWorkOrderDataSource, cliente: ClientEntity): Boolean {
         val subido = remote.uploadClient(cliente.toDto())
         if (subido) {
             workOrderDao.markClientAsSynced(cliente.id)
@@ -231,8 +277,7 @@ class OperacionesRepository(
         return subido
     }
 
-    private suspend fun subirYMarcarMoto(moto: MotorcycleEntity): Boolean {
-        val remote = remoteDataSource ?: return true
+    private suspend fun subirYMarcarMoto(remote: RemoteWorkOrderDataSource, moto: MotorcycleEntity): Boolean {
         val subido = remote.uploadMotorcycle(moto.toDto())
         if (subido) {
             workOrderDao.markMotorcycleAsSynced(moto.id)
@@ -240,12 +285,15 @@ class OperacionesRepository(
         return subido
     }
 
-    private suspend fun subirYMarcarOrden(orden: WorkOrderEntity): Boolean {
-        val remote = remoteDataSource ?: return true
+    private suspend fun subirYMarcarOrden(remote: RemoteWorkOrderDataSource, orden: WorkOrderEntity): Boolean {
         val subido = remote.uploadOrder(orden.toDto())
         if (subido) {
             workOrderDao.markOrderAsSynced(orden.id)
         }
         return subido
+    }
+
+    companion object {
+        const val PULL_COOLDOWN_MS = 2 * 60_000L
     }
 }

@@ -11,6 +11,10 @@ import com.TallerJC.motogest.data.remote.datasource.RemoteWorkOrderDataSourceImp
 import com.TallerJC.motogest.data.repository.GerenciaRepository
 import com.TallerJC.motogest.data.repository.GerenciaRepositoryImpl
 import com.TallerJC.motogest.data.repository.OperacionesRepository
+import com.TallerJC.motogest.data.sync.SharedPreferencesSyncCooldownStore
+import com.TallerJC.motogest.data.sync.SyncCooldownStore
+import com.TallerJC.motogest.data.sync.SyncScheduler
+import com.TallerJC.motogest.data.sync.WorkManagerSyncScheduler
 
 interface AppContainer {
     val database: AppDatabase
@@ -18,6 +22,8 @@ interface AppContainer {
     val notificationDao: NotificationDao
     val mediaDao: MediaDao
     val remoteDataSource: RemoteWorkOrderDataSource
+    val syncScheduler: SyncScheduler
+    val syncCooldownStore: SyncCooldownStore
     val operacionesRepository: OperacionesRepository
     val gerenciaRepository: GerenciaRepository
 }
@@ -43,8 +49,21 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         RemoteWorkOrderDataSourceImpl(RetrofitClient.apiService)
     }
 
+    override val syncScheduler: SyncScheduler by lazy {
+        WorkManagerSyncScheduler(context)
+    }
+
+    override val syncCooldownStore: SyncCooldownStore by lazy {
+        SharedPreferencesSyncCooldownStore(context)
+    }
+
     override val operacionesRepository: OperacionesRepository by lazy {
-        OperacionesRepository(workOrderDao, remoteDataSource)
+        OperacionesRepository(
+            workOrderDao = workOrderDao,
+            remoteDataSource = remoteDataSource,
+            syncScheduler = syncScheduler,
+            syncCooldownStore = syncCooldownStore
+        )
     }
 
     override val gerenciaRepository: GerenciaRepository by lazy {

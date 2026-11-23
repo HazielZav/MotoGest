@@ -33,6 +33,7 @@ import com.TallerJC.motogest.R
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
+import com.TallerJC.motogest.data.sync.SyncState
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 import com.TallerJC.motogest.ui.util.getLabelRes
@@ -189,11 +190,19 @@ fun PantallaRecepcionContenido(
                                 color = MaterialTheme.colorScheme.primary
                             )
                         } else {
-                            Icon(
-                                Icons.Default.CloudSync,
-                                contentDescription = stringResource(R.string.recepcion_btn_sincronizar_nube),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                            BadgedBox(
+                                badge = {
+                                    if (estadoUi.estadoSincronizacion == SyncState.PENDING) {
+                                        Badge(containerColor = MaterialTheme.colorScheme.tertiary)
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.CloudSync,
+                                    contentDescription = stringResource(R.string.recepcion_btn_sincronizar_nube),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
                 },

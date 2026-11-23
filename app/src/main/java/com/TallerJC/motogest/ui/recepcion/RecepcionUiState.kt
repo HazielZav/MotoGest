@@ -3,6 +3,7 @@ package com.TallerJC.motogest.ui.recepcion
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
+import com.TallerJC.motogest.data.sync.SyncState
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 
@@ -81,5 +82,7 @@ data class RecepcionUiState(
 
     // Sincronización en la nube (Retrofit + Firebase)
     val sincronizandoNube: Boolean = false,
+    val sincronizandoManual: Boolean = false,
+    val estadoSincronizacion: SyncState = SyncState.IDLE,
     val mensajeNube: String? = null
 )

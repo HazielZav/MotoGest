@@ -8,6 +8,7 @@ import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
 import com.TallerJC.motogest.data.local.entity.WorkOrderEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.data.repository.OperacionesRepository
+import com.TallerJC.motogest.data.sync.SyncState
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
@@ -32,6 +33,22 @@ class RecepcionViewModel(
     init {
         observarOrdenesListasParaEntrega()
         observarClientesRegistrados()
+        observarEstadoSincronizacion()
+    }
+
+    private fun observarEstadoSincronizacion() {
+        viewModelScope.launch(dispatcher) {
+            repository.estadoSincronizacion
+                .catch { /* ignorar */ }
+                .collect { estadoSync ->
+                    _estadoUi.update { actual ->
+                        actual.copy(
+                            estadoSincronizacion = estadoSync,
+                            sincronizandoNube = actual.sincronizandoManual || estadoSync == SyncState.SYNCING
+                        )
+                    }
+                }
+        }
     }
 
     private fun observarOrdenesListasParaEntrega() {
@@ -391,11 +408,25 @@ class RecepcionViewModel(
 
     fun sincronizarConNube() {
         viewModelScope.launch(dispatcher) {
-            _estadoUi.update { it.copy(sincronizandoNube = true, mensajeNube = null) }
-            val exito = repository.sincronizarConNube()
             _estadoUi.update {
                 it.copy(
-                    sincronizandoNube = false,
+                    sincronizandoManual = true,
+                    sincronizandoNube = true,
+                    mensajeNube = null
+                )
+            }
+            val exito = try {
+                repository.sincronizarConNube()
+            } finally {
+                _estadoUi.update {
+                    it.copy(
+                        sincronizandoManual = false,
+                        sincronizandoNube = it.estadoSincronizacion == SyncState.SYNCING
+                    )
+                }
+            }
+            _estadoUi.update {
+                it.copy(
                     mensajeNube = if (exito) "✓ Sincronización con Firebase completada." else "No se pudo sincronizar con Firebase. Verifique su conexión."
                 )
             }
@@ -523,7 +554,11 @@ class RecepcionViewModel(
                     ordenGuardadaConExito = true,
                     clientesRegistrados = it.clientesRegistrados,
                     ordenesListasParaEntrega = it.ordenesListasParaEntrega,
-                    ordenesFiltradasEntrega = it.ordenesFiltradasEntrega
+                    ordenesFiltradasEntrega = it.ordenesFiltradasEntrega,
+                    estadoSincronizacion = it.estadoSincronizacion,
+                    sincronizandoNube = it.sincronizandoNube,
+                    sincronizandoManual = it.sincronizandoManual,
+                    mensajeNube = it.mensajeNube
                 )
             }
         }
