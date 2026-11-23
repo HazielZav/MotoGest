@@ -11,6 +11,7 @@ import com.TallerJC.motogest.data.repository.OperacionesRepository
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.ui.util.SpeechRecognizerHelper
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -365,6 +366,28 @@ class RecepcionViewModel(
     fun seleccionarServicio(servicio: ServiceType) = _estadoUi.update { it.copy(servicioSeleccionado = servicio) }
     fun actualizarFallaReportada(valor: String) = _estadoUi.update { it.copy(fallaReportada = valor, mensajeError = null) }
     fun actualizarNotasDanos(valor: String) = _estadoUi.update { it.copy(notasDanosPrevios = valor) }
+
+    // --- DICTADO POR VOZ NATIVO ---
+    fun aplicarTextoDictado(campo: CampoDictado, textoTranscrito: String?) {
+        val limpio = textoTranscrito?.trim().orEmpty()
+        if (limpio.isEmpty()) return
+        _estadoUi.update { actual ->
+            when (campo) {
+                CampoDictado.FALLA_REPORTADA -> actual.copy(
+                    fallaReportada = SpeechRecognizerHelper.combineWithExistingText(actual.fallaReportada, limpio),
+                    mensajeError = null,
+                    mensajeDictado = null
+                )
+                CampoDictado.NOTAS_DANOS -> actual.copy(
+                    notasDanosPrevios = SpeechRecognizerHelper.combineWithExistingText(actual.notasDanosPrevios, limpio),
+                    mensajeDictado = null
+                )
+            }
+        }
+    }
+
+    fun reportarErrorDictado(mensaje: String) = _estadoUi.update { it.copy(mensajeDictado = mensaje) }
+    fun consumirMensajeDictado() = _estadoUi.update { it.copy(mensajeDictado = null) }
 
     fun cambiarModalidadEntrega(modalidad: DeliveryType) {
         _estadoUi.update { actual ->
