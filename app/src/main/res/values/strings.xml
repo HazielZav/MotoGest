@@ -144,6 +144,8 @@
     <string name="taller_modal_refacciones_titulo">Refacciones y Repuestos Utilizados</string>
     <string name="taller_modal_label_pieza">Pieza o repuesto</string>
     <string name="taller_modal_label_recs">Recomendaciones técnicas para el cliente...</string>
+    <string name="taller_desc_dictado_recs">Dictar recomendaciones</string>
+    <string name="taller_dictado_prompt_recs">Dicta las recomendaciones técnicas para el cliente...</string>
     <string name="taller_modal_btn_guardar">GUARDAR HOJA DE TALLER</string>
 
     <!-- Pantalla Entregas -->
