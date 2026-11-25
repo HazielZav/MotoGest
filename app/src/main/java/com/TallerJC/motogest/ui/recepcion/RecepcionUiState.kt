@@ -7,6 +7,11 @@ import com.TallerJC.motogest.data.local.storage.StoredImageFile
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 
+enum class CampoDictado {
+    FALLA_REPORTADA,
+    NOTAS_DANOS
+}
+
 data class RecepcionUiState(
     // Pestaña activa (0 = Nueva Recepción, 1 = Entrega en Taller)
     val pestanaSeleccionada: Int = 0,
@@ -70,6 +75,7 @@ data class RecepcionUiState(
 
     val mostrarAlertaSinDomicilio: Boolean = false,
     val mensajeError: String? = null,
+    val mensajeDictado: String? = null,
     val ordenGuardadaConExito: Boolean = false,
 
     // Lista de opciones para los chips

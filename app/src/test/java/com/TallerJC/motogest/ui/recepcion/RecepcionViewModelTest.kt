@@ -617,4 +617,37 @@ class RecepcionViewModelTest {
         assertEquals(MediaSyncStatus.PENDING.name, mediaMoto.first().syncStatus)
         assertNull(mediaMoto.first().remoteUrl)
     }
+
+    @Test
+    fun testDictadoVozInyectaYConcatenaEnFallaYNotasDanos() = runBlocking {
+        val viewModel = RecepcionViewModel(repository, Dispatchers.Unconfined)
+
+        viewModel.aplicarTextoDictado(CampoDictado.FALLA_REPORTADA, "  Ruido en la cadena al acelerar  ")
+        assertEquals("Ruido en la cadena al acelerar", viewModel.estadoUi.value.fallaReportada)
+
+        viewModel.aplicarTextoDictado(CampoDictado.FALLA_REPORTADA, "y freno trasero flojo")
+        assertEquals("Ruido en la cadena al acelerar y freno trasero flojo", viewModel.estadoUi.value.fallaReportada)
+
+        viewModel.aplicarTextoDictado(CampoDictado.NOTAS_DANOS, "Rayón en tanque lado izquierdo")
+        assertEquals("Rayón en tanque lado izquierdo", viewModel.estadoUi.value.notasDanosPrevios)
+
+        viewModel.aplicarTextoDictado(CampoDictado.NOTAS_DANOS, "   ")
+        viewModel.aplicarTextoDictado(CampoDictado.FALLA_REPORTADA, null)
+        assertEquals("Rayón en tanque lado izquierdo", viewModel.estadoUi.value.notasDanosPrevios)
+        assertEquals("Ruido en la cadena al acelerar y freno trasero flojo", viewModel.estadoUi.value.fallaReportada)
+    }
+
+    @Test
+    fun testDictadoVozManejaDispositivoSinSoporte() = runBlocking {
+        val viewModel = RecepcionViewModel(repository, Dispatchers.Unconfined)
+
+        viewModel.reportarErrorDictado("Este dispositivo no cuenta con dictado por voz disponible.")
+        assertEquals(
+            "Este dispositivo no cuenta con dictado por voz disponible.",
+            viewModel.estadoUi.value.mensajeDictado
+        )
+
+        viewModel.consumirMensajeDictado()
+        assertNull(viewModel.estadoUi.value.mensajeDictado)
+    }
 }

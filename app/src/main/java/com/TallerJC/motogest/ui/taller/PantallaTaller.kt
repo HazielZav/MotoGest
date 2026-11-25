@@ -1,6 +1,9 @@
 package com.TallerJC.motogest.ui.taller
 
+import android.content.ActivityNotFoundException
 import android.content.res.Configuration
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -14,8 +17,10 @@ import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -30,6 +35,7 @@ import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 import com.TallerJC.motogest.ui.components.MotoThumbnail
+import com.TallerJC.motogest.ui.util.SpeechRecognizerHelper
 import com.TallerJC.motogest.ui.util.getLabelRes
 import java.text.NumberFormat
 import java.util.Locale
@@ -428,12 +434,39 @@ fun ModalDetalleMecanico(
     onAgregarRefaccion: (String, String) -> Unit,
     onGuardarCambios: (String, String) -> Unit
 ) {
-    var conceptoTrabajo by remember { mutableStateOf("") }
-    var costoTrabajo by remember { mutableStateOf("") }
-    var nombrePieza by remember { mutableStateOf("") }
-    var costoPieza by remember { mutableStateOf("") }
-    var recomendaciones by remember { mutableStateOf(ordenDetalle.order.recommendations ?: "") }
-    var vinMoto by remember { mutableStateOf(ordenDetalle.motorcycle.vin ?: "") }
+    val context = LocalContext.current
+    var conceptoTrabajo by rememberSaveable(ordenDetalle.order.id) { mutableStateOf("") }
+    var costoTrabajo by rememberSaveable(ordenDetalle.order.id) { mutableStateOf("") }
+    var nombrePieza by rememberSaveable(ordenDetalle.order.id) { mutableStateOf("") }
+    var costoPieza by rememberSaveable(ordenDetalle.order.id) { mutableStateOf("") }
+    var recomendaciones by rememberSaveable(ordenDetalle.order.id) {
+        mutableStateOf(ordenDetalle.order.recommendations ?: "")
+    }
+    var vinMoto by rememberSaveable(ordenDetalle.order.id) {
+        mutableStateOf(ordenDetalle.motorcycle.vin ?: "")
+    }
+    var mensajeDictado by rememberSaveable(ordenDetalle.order.id) { mutableStateOf<String?>(null) }
+
+    val speechLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val texto = SpeechRecognizerHelper.extractTranscribedText(result.resultCode, result.data)
+        if (texto != null) {
+            recomendaciones = SpeechRecognizerHelper.combineWithExistingText(recomendaciones, texto)
+            mensajeDictado = null
+        }
+    }
+
+    fun lanzarDictadoRecomendaciones() {
+        val intent = SpeechRecognizerHelper.createSpanishSpeechIntent(
+            context.getString(R.string.taller_dictado_prompt_recs)
+        )
+        try {
+            speechLauncher.launch(intent)
+        } catch (_: ActivityNotFoundException) {
+            mensajeDictado = context.getString(R.string.recepcion_dictado_no_disponible)
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -559,6 +592,45 @@ fun ModalDetalleMecanico(
             HorizontalDivider()
 
             // RECOMENDACIONES CON DICTADO POR VOZ
+            mensajeDictado?.let { aviso ->
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                Icons.Default.MicOff,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Text(
+                                text = aviso,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                        IconButton(onClick = { mensajeDictado = null }, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = stringResource(R.string.btn_cerrar),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
             OutlinedTextField(
                 value = recomendaciones,
                 onValueChange = { recomendaciones = it },
@@ -567,8 +639,12 @@ fun ModalDetalleMecanico(
                     .fillMaxWidth()
                     .height(100.dp),
                 trailingIcon = {
-                    IconButton(onClick = { /* SpeechRecognizer */ }, modifier = Modifier.size(48.dp)) {
-                        Icon(Icons.Default.Mic, contentDescription = "Dictar recomendaciones", tint = MaterialTheme.colorScheme.primary)
+                    IconButton(onClick = ::lanzarDictadoRecomendaciones, modifier = Modifier.size(48.dp)) {
+                        Icon(
+                            Icons.Default.Mic,
+                            contentDescription = stringResource(R.string.taller_desc_dictado_recs),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             )

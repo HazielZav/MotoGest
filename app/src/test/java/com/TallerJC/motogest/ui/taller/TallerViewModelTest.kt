@@ -11,6 +11,7 @@ import com.TallerJC.motogest.data.repository.OperacionesRepository
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.ui.util.SpeechRecognizerHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -273,5 +274,21 @@ class TallerViewModelTest {
 
         val motoDb = fakeDao.getMotorcycleById(detalle.motorcycle.id)
         assertEquals("VIN999888", motoDb?.vin)
+    }
+
+    @Test
+    fun testDictadoRecomendacionesConcatenaYGuardaEnHojaTaller() = runBlocking {
+        val detalle = crearOrdenPrueba("3", "ORD-104", OrderStatus.EN_PROCESO)
+        val viewModel = TallerViewModel(repository, Dispatchers.Unconfined)
+
+        var recs = SpeechRecognizerHelper.combineWithExistingText("", "Cambiar bujía en el próximo servicio")
+        recs = SpeechRecognizerHelper.combineWithExistingText(recs, "y revisar tensión de cadena")
+        // Cancelación / vacío no altera las recomendaciones
+        recs = SpeechRecognizerHelper.combineWithExistingText(recs, null)
+
+        viewModel.guardarRecomendacionesYVin(detalle, recs, "")
+
+        val ordenDb = fakeDao.getOrderById("3")
+        assertEquals("Cambiar bujía en el próximo servicio y revisar tensión de cadena", ordenDb?.recommendations)
     }
 }
