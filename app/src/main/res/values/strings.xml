@@ -75,6 +75,9 @@
     <string name="recepcion_seccion_servicio">3. Orden de Servicio</string>
     <string name="recepcion_label_falla">Problema reportado por el cliente*</string>
     <string name="recepcion_desc_dictado">Dictar por voz</string>
+    <string name="recepcion_dictado_prompt_falla">Dicta el problema reportado por el cliente...</string>
+    <string name="recepcion_dictado_prompt_danos">Dicta golpes o rayones previos de la moto...</string>
+    <string name="recepcion_dictado_no_disponible">Este dispositivo no cuenta con dictado por voz disponible.</string>
     <string name="recepcion_seccion_evidencia">Evidencia de Daños Previos (%1$d/5)</string>
     <string name="recepcion_desc_foto">Capturar Foto</string>
     <string name="recepcion_label_foto_item">Foto #%1$d</string>
@@ -141,6 +144,8 @@
     <string name="taller_modal_refacciones_titulo">Refacciones y Repuestos Utilizados</string>
     <string name="taller_modal_label_pieza">Pieza o repuesto</string>
     <string name="taller_modal_label_recs">Recomendaciones técnicas para el cliente...</string>
+    <string name="taller_desc_dictado_recs">Dictar recomendaciones</string>
+    <string name="taller_dictado_prompt_recs">Dicta las recomendaciones técnicas para el cliente...</string>
     <string name="taller_modal_btn_guardar">GUARDAR HOJA DE TALLER</string>
 
     <!-- Pantalla Entregas -->

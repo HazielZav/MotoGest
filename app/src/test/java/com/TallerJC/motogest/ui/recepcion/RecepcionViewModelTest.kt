@@ -398,4 +398,41 @@ class RecepcionViewModelTest {
         assertNotNull(motoEnDb)
         assertEquals(cliente.id, motoEnDb?.clientId)
     }
+
+    @Test
+    fun testDictadoVozInyectaYConcatenaEnFallaYNotasDanos() = runBlocking {
+        val viewModel = RecepcionViewModel(repository, Dispatchers.Unconfined)
+
+        // Dictado inicial en falla reportada (campo vacío)
+        viewModel.aplicarTextoDictado(CampoDictado.FALLA_REPORTADA, "  Ruido en la cadena al acelerar  ")
+        assertEquals("Ruido en la cadena al acelerar", viewModel.estadoUi.value.fallaReportada)
+
+        // Segundo dictado en el mismo campo -> concatena sin sobrescribir
+        viewModel.aplicarTextoDictado(CampoDictado.FALLA_REPORTADA, "y freno trasero flojo")
+        assertEquals("Ruido en la cadena al acelerar y freno trasero flojo", viewModel.estadoUi.value.fallaReportada)
+
+        // Dictado en notas de daños previos
+        viewModel.aplicarTextoDictado(CampoDictado.NOTAS_DANOS, "Rayón en tanque lado izquierdo")
+        assertEquals("Rayón en tanque lado izquierdo", viewModel.estadoUi.value.notasDanosPrevios)
+
+        // Cancelación o resultado vacío -> no altera el texto existente
+        viewModel.aplicarTextoDictado(CampoDictado.NOTAS_DANOS, "   ")
+        viewModel.aplicarTextoDictado(CampoDictado.FALLA_REPORTADA, null)
+        assertEquals("Rayón en tanque lado izquierdo", viewModel.estadoUi.value.notasDanosPrevios)
+        assertEquals("Ruido en la cadena al acelerar y freno trasero flojo", viewModel.estadoUi.value.fallaReportada)
+    }
+
+    @Test
+    fun testDictadoVozManejaDispositivoSinSoporte() = runBlocking {
+        val viewModel = RecepcionViewModel(repository, Dispatchers.Unconfined)
+
+        viewModel.reportarErrorDictado("Este dispositivo no cuenta con dictado por voz disponible.")
+        assertEquals(
+            "Este dispositivo no cuenta con dictado por voz disponible.",
+            viewModel.estadoUi.value.mensajeDictado
+        )
+
+        viewModel.consumirMensajeDictado()
+        assertNull(viewModel.estadoUi.value.mensajeDictado)
+    }
 }

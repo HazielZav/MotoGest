@@ -1,6 +1,9 @@
 package com.TallerJC.motogest.ui.recepcion
 
+import android.content.ActivityNotFoundException
 import android.content.res.Configuration
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -19,9 +22,11 @@ import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -35,6 +40,7 @@ import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.ui.util.SpeechRecognizerHelper
 import com.TallerJC.motogest.ui.util.getLabelRes
 import java.text.NumberFormat
 import java.util.Locale
@@ -44,6 +50,33 @@ fun PantallaRecepcion(
     viewModel: RecepcionViewModel
 ) {
     val estadoUi by viewModel.estadoUi.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var campoDictadoActivo by rememberSaveable { mutableStateOf(CampoDictado.FALLA_REPORTADA.name) }
+
+    val speechLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val texto = SpeechRecognizerHelper.extractTranscribedText(result.resultCode, result.data)
+        if (texto != null) {
+            val campo = runCatching { CampoDictado.valueOf(campoDictadoActivo) }
+                .getOrDefault(CampoDictado.FALLA_REPORTADA)
+            viewModel.aplicarTextoDictado(campo, texto)
+        }
+    }
+
+    fun lanzarDictadoVoz(campo: CampoDictado) {
+        campoDictadoActivo = campo.name
+        val promptRes = when (campo) {
+            CampoDictado.FALLA_REPORTADA -> R.string.recepcion_dictado_prompt_falla
+            CampoDictado.NOTAS_DANOS -> R.string.recepcion_dictado_prompt_danos
+        }
+        val intent = SpeechRecognizerHelper.createSpanishSpeechIntent(context.getString(promptRes))
+        try {
+            speechLauncher.launch(intent)
+        } catch (_: ActivityNotFoundException) {
+            viewModel.reportarErrorDictado(context.getString(R.string.recepcion_dictado_no_disponible))
+        }
+    }
 
     PantallaRecepcionContenido(
         estadoUi = estadoUi,
@@ -83,8 +116,11 @@ fun PantallaRecepcion(
         onVinCambio = viewModel::actualizarVin,
         onServicioSeleccionado = viewModel::seleccionarServicio,
         onFallaCambio = viewModel::actualizarFallaReportada,
+        onDictarFalla = { lanzarDictadoVoz(CampoDictado.FALLA_REPORTADA) },
         onAgregarFoto = viewModel::agregarFotoEvidenciaSimulada,
         onNotasDanosCambio = viewModel::actualizarNotasDanos,
+        onDictarNotasDanos = { lanzarDictadoVoz(CampoDictado.NOTAS_DANOS) },
+        onConsumirMensajeDictado = viewModel::consumirMensajeDictado,
         onModalidadCambio = viewModel::cambiarModalidadEntrega,
         onDescartarAlertaDomicilio = viewModel::descartarAlertaDomicilio,
         onGuardarClic = viewModel::guardarOrden,
@@ -140,8 +176,11 @@ fun PantallaRecepcionContenido(
     onVinCambio: (String) -> Unit,
     onServicioSeleccionado: (ServiceType) -> Unit,
     onFallaCambio: (String) -> Unit,
+    onDictarFalla: () -> Unit = {},
     onAgregarFoto: () -> Unit,
     onNotasDanosCambio: (String) -> Unit,
+    onDictarNotasDanos: () -> Unit = {},
+    onConsumirMensajeDictado: () -> Unit = {},
     onModalidadCambio: (DeliveryType) -> Unit,
     onDescartarAlertaDomicilio: () -> Unit,
     onGuardarClic: () -> Unit,
@@ -681,15 +720,45 @@ fun PantallaRecepcionContenido(
                         }
                     }
 
+                    // Aviso cuando el dispositivo no soporta dictado por voz
+                    estadoUi.mensajeDictado?.let { aviso ->
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.MicOff, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    Text(
+                                        text = aviso,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                }
+                                IconButton(onClick = onConsumirMensajeDictado, modifier = Modifier.size(28.dp)) {
+                                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.btn_cerrar), modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+                    }
+
                     // Falla reportada / Motivo de ingreso
                     OutlinedTextField(
                         value = estadoUi.fallaReportada,
                         onValueChange = onFallaCambio,
                         label = { Text(stringResource(R.string.recepcion_label_falla)) },
                         trailingIcon = {
-                            IconButton(onClick = {
-                                onFallaCambio(if (estadoUi.fallaReportada.isBlank()) "Cliente reporta ruido en motor y freno trasero bajo." else "${estadoUi.fallaReportada} Revisión general.")
-                            }) {
+                            IconButton(onClick = onDictarFalla) {
                                 Icon(Icons.Default.Mic, contentDescription = stringResource(R.string.recepcion_desc_dictado), tint = MaterialTheme.colorScheme.primary)
                             }
                         },
@@ -738,8 +807,14 @@ fun PantallaRecepcionContenido(
                         value = estadoUi.notasDanosPrevios,
                         onValueChange = onNotasDanosCambio,
                         label = { Text(stringResource(R.string.recepcion_label_danos)) },
+                        trailingIcon = {
+                            IconButton(onClick = onDictarNotasDanos) {
+                                Icon(Icons.Default.Mic, contentDescription = stringResource(R.string.recepcion_desc_dictado), tint = MaterialTheme.colorScheme.primary)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        minLines = 1,
+                        maxLines = 3
                     )
 
                     // Modalidad de Entrega
