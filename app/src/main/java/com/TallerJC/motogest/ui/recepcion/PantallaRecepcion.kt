@@ -46,6 +46,7 @@ import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.data.local.storage.StoredImageFile
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.ui.components.MotoThumbnail
 import com.TallerJC.motogest.ui.util.getLabelRes
 import java.text.NumberFormat
 import java.util.Locale
@@ -673,33 +674,46 @@ fun PantallaRecepcionContenido(
                                         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                                             ) {
-                                                Text(
-                                                    text = "${moto.brand} ${moto.model}",
-                                                    fontWeight = FontWeight.Bold,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    modifier = Modifier.weight(1f)
+                                                MotoThumbnail(
+                                                    photoUrl = moto.photoUrl,
+                                                    size = 48.dp,
+                                                    cornerRadius = 8.dp
                                                 )
-                                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                                    IconButton(
-                                                        onClick = { onAbrirDialogoEditarMoto(moto) },
-                                                        modifier = Modifier.size(28.dp)
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
                                                     ) {
-                                                        Icon(
-                                                            Icons.Default.Edit,
-                                                            contentDescription = stringResource(R.string.recepcion_btn_editar_moto),
-                                                            tint = MaterialTheme.colorScheme.primary,
-                                                            modifier = Modifier.size(16.dp)
+                                                        Text(
+                                                            text = "${moto.brand} ${moto.model}",
+                                                            fontWeight = FontWeight.Bold,
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            modifier = Modifier.weight(1f)
                                                         )
+                                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                            IconButton(
+                                                                onClick = { onAbrirDialogoEditarMoto(moto) },
+                                                                modifier = Modifier.size(28.dp)
+                                                            ) {
+                                                                Icon(
+                                                                    Icons.Default.Edit,
+                                                                    contentDescription = stringResource(R.string.recepcion_btn_editar_moto),
+                                                                    tint = MaterialTheme.colorScheme.primary,
+                                                                    modifier = Modifier.size(16.dp)
+                                                                )
+                                                            }
+                                                            if (seleccionada) {
+                                                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                                            }
+                                                        }
                                                     }
-                                                    if (seleccionada) {
-                                                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                                                    }
+                                                    Text("Color: ${moto.color}", style = MaterialTheme.typography.bodySmall)
                                                 }
                                             }
-                                            Text("Color: ${moto.color}", style = MaterialTheme.typography.bodySmall)
                                             moto.plate?.let { Text("Placa: $it", style = MaterialTheme.typography.bodySmall) }
                                             moto.year?.let { Text("Año: $it", style = MaterialTheme.typography.bodySmall) }
                                             Spacer(modifier = Modifier.height(4.dp))
@@ -731,21 +745,11 @@ fun PantallaRecepcionContenido(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    val fotoValida = estadoUi.motoSeleccionada.photoUrl.let {
-                                        it.isNotBlank() && !it.startsWith("local://")
-                                    }
-                                    if (fotoValida) {
-                                        AsyncImage(
-                                            model = estadoUi.motoSeleccionada.photoUrl,
-                                            contentDescription = stringResource(R.string.recepcion_desc_miniatura_moto),
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier
-                                                .size(48.dp)
-                                                .clip(RoundedCornerShape(8.dp))
-                                        )
-                                    } else {
-                                        Icon(Icons.Default.TwoWheeler, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(32.dp))
-                                    }
+                                    MotoThumbnail(
+                                        photoUrl = estadoUi.motoSeleccionada.photoUrl,
+                                        size = 52.dp,
+                                        cornerRadius = 8.dp
+                                    )
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = stringResource(R.string.recepcion_moto_seleccionada_label),
@@ -1523,25 +1527,35 @@ fun TarjetaEntregaTaller(
                 }
             }
 
-            // Datos del Cliente
+            // Identificación visual de la Moto + Datos del Cliente
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
-                Text(text = cliente.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = "• ${cliente.phone}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-
-            // Datos de la Moto
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(Icons.Default.TwoWheeler, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-                val placaTxt = moto.plate?.let { " • Placa: $it" } ?: ""
-                Text(text = "${moto.brand} ${moto.model} (${moto.color})$placaTxt", style = MaterialTheme.typography.bodyMedium)
+                MotoThumbnail(
+                    photoUrl = moto.photoUrl,
+                    size = 56.dp,
+                    cornerRadius = 10.dp
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val placaTxt = moto.plate?.let { " • Placa: $it" } ?: ""
+                    Text(
+                        text = "${moto.brand} ${moto.model} (${moto.color})$placaTxt",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
+                        Text(text = "${cliente.name} • ${cliente.phone}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
 
             // Servicio & Falla
