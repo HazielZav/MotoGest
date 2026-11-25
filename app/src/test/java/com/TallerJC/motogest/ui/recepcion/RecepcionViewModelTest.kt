@@ -1,6 +1,7 @@
 package com.TallerJC.motogest.ui.recepcion
 
 import android.net.Uri
+import com.TallerJC.motogest.R
 import com.TallerJC.motogest.data.local.dao.WorkOrderDao
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
@@ -18,6 +19,7 @@ import com.TallerJC.motogest.domain.model.enums.MediaTag
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 import com.TallerJC.motogest.fake.FakeMediaDao
+import com.TallerJC.motogest.ui.util.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -641,11 +643,9 @@ class RecepcionViewModelTest {
     fun testDictadoVozManejaDispositivoSinSoporte() = runBlocking {
         val viewModel = RecepcionViewModel(repository, Dispatchers.Unconfined)
 
-        viewModel.reportarErrorDictado("Este dispositivo no cuenta con dictado por voz disponible.")
-        assertEquals(
-            "Este dispositivo no cuenta con dictado por voz disponible.",
-            viewModel.estadoUi.value.mensajeDictado
-        )
+        val expectedMsg = UiText.StringResource(R.string.recepcion_dictado_no_disponible)
+        viewModel.reportarErrorDictado(expectedMsg)
+        assertEquals(expectedMsg, viewModel.estadoUi.value.mensajeDictado)
 
         viewModel.consumirMensajeDictado()
         assertNull(viewModel.estadoUi.value.mensajeDictado)

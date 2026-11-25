@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.TallerJC.motogest.R
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MediaEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
@@ -19,6 +20,7 @@ import com.TallerJC.motogest.domain.model.enums.MediaTag
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 import com.TallerJC.motogest.ui.util.SpeechRecognizerHelper
+import com.TallerJC.motogest.ui.util.UiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,7 +50,14 @@ class RecepcionViewModel(
         viewModelScope.launch(dispatcher) {
             repository.obtenerTodasLasOrdenes()
                 .catch { ex ->
-                    _estadoUi.update { it.copy(mensajeError = "Error al sincronizar órdenes: ${ex.message}") }
+                    _estadoUi.update {
+                        it.copy(
+                            mensajeError = UiText.StringResource(
+                                R.string.recepcion_error_sync_ordenes,
+                                ex.message.orEmpty()
+                            )
+                        )
+                    }
                 }
                 .collect { todasLasOrdenes ->
                     val listas = todasLasOrdenes.filter { it.order.status == OrderStatus.LISTA_ENTREGA.name }
@@ -151,11 +160,11 @@ class RecepcionViewModel(
         val direccion = actual.nuevoClienteDireccion.trim().ifBlank { null }
 
         if (nombre.isBlank()) {
-            _estadoUi.update { it.copy(errorNuevoCliente = "El nombre del cliente es obligatorio.") }
+            _estadoUi.update { it.copy(errorNuevoCliente = UiText.StringResource(R.string.recepcion_error_nombre_obligatorio)) }
             return
         }
         if (telefono.length < 10) {
-            _estadoUi.update { it.copy(errorNuevoCliente = "El celular debe contener los 10 dígitos.") }
+            _estadoUi.update { it.copy(errorNuevoCliente = UiText.StringResource(R.string.recepcion_error_telefono_digitos)) }
             return
         }
 
@@ -306,7 +315,7 @@ class RecepcionViewModel(
         val actual = _estadoUi.value
         val cliente = actual.clienteSeleccionado
         if (cliente == null) {
-            _estadoUi.update { it.copy(errorNuevaMoto = "Primero debes seleccionar un cliente.") }
+            _estadoUi.update { it.copy(errorNuevaMoto = UiText.StringResource(R.string.recepcion_error_seleccionar_cliente)) }
             return
         }
         val marca = actual.nuevaMotoMarca.trim()
@@ -314,7 +323,7 @@ class RecepcionViewModel(
         val color = actual.nuevaMotoColor.trim()
 
         if (marca.isBlank() || modelo.isBlank() || color.isBlank()) {
-            _estadoUi.update { it.copy(errorNuevaMoto = "Marca, modelo y color son obligatorios.") }
+            _estadoUi.update { it.copy(errorNuevaMoto = UiText.StringResource(R.string.recepcion_error_moto_campos_obligatorios)) }
             return
         }
 
@@ -503,7 +512,7 @@ class RecepcionViewModel(
         }
     }
 
-    fun reportarErrorDictado(mensaje: String) = _estadoUi.update { it.copy(mensajeDictado = mensaje) }
+    fun reportarErrorDictado(mensaje: UiText) = _estadoUi.update { it.copy(mensajeDictado = mensaje) }
     fun consumirMensajeDictado() = _estadoUi.update { it.copy(mensajeDictado = null) }
 
     fun cambiarModalidadEntrega(modalidad: DeliveryType) {
@@ -522,7 +531,7 @@ class RecepcionViewModel(
         return try {
             imageStorage?.createCameraImageDestination(prefix)
         } catch (_: Exception) {
-            _estadoUi.update { it.copy(mensajeError = "No se pudo preparar el archivo local para la cámara.") }
+            _estadoUi.update { it.copy(mensajeError = UiText.StringResource(R.string.recepcion_error_preparar_camara)) }
             null
         }
     }
@@ -533,7 +542,7 @@ class RecepcionViewModel(
         }
     }
 
-    fun reportarErrorCamara(mensaje: String) {
+    fun reportarErrorCamara(mensaje: UiText) {
         _estadoUi.update { it.copy(mensajeError = mensaje) }
     }
 
@@ -551,7 +560,7 @@ class RecepcionViewModel(
             if (copiada != null) {
                 establecerFotoNuevaMoto(copiada)
             } else {
-                _estadoUi.update { it.copy(errorNuevaMoto = "No se pudo guardar la imagen seleccionada.") }
+                _estadoUi.update { it.copy(errorNuevaMoto = UiText.StringResource(R.string.recepcion_error_guardar_imagen)) }
             }
         }
     }
@@ -598,7 +607,7 @@ class RecepcionViewModel(
             if (copiada != null) {
                 agregarFotoEvidencia(copiada)
             } else {
-                _estadoUi.update { it.copy(mensajeError = "No se pudo copiar la imagen de galería al almacenamiento local.") }
+                _estadoUi.update { it.copy(mensajeError = UiText.StringResource(R.string.recepcion_error_copiar_galeria)) }
             }
         }
     }
@@ -643,7 +652,9 @@ class RecepcionViewModel(
             _estadoUi.update {
                 it.copy(
                     sincronizandoNube = false,
-                    mensajeNube = if (exito) "✓ Sincronización con Firebase completada." else "No se pudo sincronizar con Firebase. Verifique su conexión."
+                    mensajeNube = UiText.StringResource(
+                        if (exito) R.string.recepcion_nube_exito else R.string.recepcion_nube_error
+                    )
                 )
             }
         }
@@ -661,7 +672,7 @@ class RecepcionViewModel(
             )
         } else {
             if (actual.nombreCliente.isBlank() || actual.telefonoCliente.length < 10) {
-                _estadoUi.update { it.copy(mensajeError = "Ingresa nombre y teléfono de 10 dígitos del cliente (o selecciónalo arriba).") }
+                _estadoUi.update { it.copy(mensajeError = UiText.StringResource(R.string.recepcion_error_cliente_invalido)) }
                 return
             }
             ClientEntity(
@@ -688,7 +699,7 @@ class RecepcionViewModel(
             )
         } else {
             if (actual.marcaMoto.isBlank() || actual.modeloMoto.isBlank() || actual.colorMoto.isBlank()) {
-                _estadoUi.update { it.copy(mensajeError = "Marca, modelo y color de la moto son obligatorios.") }
+                _estadoUi.update { it.copy(mensajeError = UiText.StringResource(R.string.recepcion_error_moto_invalida)) }
                 return
             }
             MotorcycleEntity(
@@ -707,7 +718,7 @@ class RecepcionViewModel(
         }
 
         if (actual.fallaReportada.isBlank()) {
-            _estadoUi.update { it.copy(mensajeError = "Describe el problema o motivo de ingreso de la unidad.") }
+            _estadoUi.update { it.copy(mensajeError = UiText.StringResource(R.string.recepcion_error_falla_obligatoria)) }
             return
         }
 
@@ -820,12 +831,20 @@ class RecepcionViewModel(
                     it.copy(
                         ordenAEntregar = null,
                         mostrarDialogoConfirmarEntrega = false,
-                        mensajeEntregaExitosa = "Orden ${ordenDetalle.order.folio} entregada con éxito al cliente en mostrador."
+                        mensajeEntregaExitosa = UiText.StringResource(
+                            R.string.recepcion_entrega_exitosa,
+                            ordenDetalle.order.folio
+                        )
                     )
                 }
             } catch (ex: Exception) {
                 _estadoUi.update {
-                    it.copy(mensajeError = "No se pudo registrar la entrega: ${ex.message}")
+                    it.copy(
+                        mensajeError = UiText.StringResource(
+                            R.string.recepcion_error_registrar_entrega,
+                            ex.message.orEmpty()
+                        )
+                    )
                 }
             }
         }

@@ -3,23 +3,27 @@ package com.TallerJC.motogest.ui.util
 import android.app.Activity
 import android.content.Intent
 import android.speech.RecognizerIntent
+import java.util.Locale
 
 /**
  * Utilidad ligera para el dictado por voz nativo mediante [RecognizerIntent.ACTION_RECOGNIZE_SPEECH].
- * Delega la captura y transcripción al motor de voz del sistema (sin SDKs externos ni permiso RECORD_AUDIO).
+ * Delega la captura y transcripción al motor de voz del sistema (sin SDKs externos ni permiso RECORD_AUDIO)
+ * utilizando automáticamente el idioma activo del dispositivo ([Locale.getDefault]).
  */
 object SpeechRecognizerHelper {
 
-    private const val SPANISH_LOCALE_TAG = "es-MX"
-
-    fun createSpanishSpeechIntent(prompt: String): Intent {
+    fun createSpeechIntent(
+        prompt: String,
+        locale: Locale = Locale.getDefault()
+    ): Intent {
+        val languageTag = locale.toLanguageTag().ifBlank { Locale.getDefault().toLanguageTag() }
         return Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(
                 RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
             )
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, SPANISH_LOCALE_TAG)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, SPANISH_LOCALE_TAG)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageTag)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, languageTag)
             putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, false)
             putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
         }

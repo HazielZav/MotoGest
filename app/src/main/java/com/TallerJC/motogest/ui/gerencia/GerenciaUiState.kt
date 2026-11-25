@@ -2,6 +2,7 @@ package com.TallerJC.motogest.ui.gerencia
 
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.ui.util.UiText
 
 enum class PeriodoFiltro(val titulo: String) {
     HOY("Hoy"),
@@ -12,7 +13,7 @@ enum class PeriodoFiltro(val titulo: String) {
 
 data class DistribucionServicio(
     val tipo: ServiceType,
-    val nombre: String,
+    val nombre: String = "",
     val cantidad: Int,
     val porcentaje: Float
 )
@@ -52,6 +53,6 @@ data class GerenciaUiState(
 
     // Banderas de UI
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: UiText? = null,
     val mostrarDialogoFecha: Boolean = false
 )

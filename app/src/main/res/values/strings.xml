@@ -40,6 +40,12 @@
     <string name="period_este_mes">Este Mes</string>
     <string name="period_personalizado">Personalizado</string>
 
+    <!-- Roles de Usuario (UserRole) -->
+    <string name="role_recepcionista">Recepcionista</string>
+    <string name="role_mecanico">Mecánico</string>
+    <string name="role_repartidor">Repartidor</string>
+    <string name="role_gerente">Gerente</string>
+
     <!-- Acciones y Botones Comunes -->
     <string name="btn_cancelar">Cancelar</string>
     <string name="btn_confirmar">Confirmar</string>
@@ -47,6 +53,29 @@
     <string name="btn_reintentar">Reintentar</string>
     <string name="btn_cerrar">Cerrar</string>
     <string name="btn_limpiar">Limpiar</string>
+
+    <!-- Etiquetas y Plantillas Comunes -->
+    <string name="label_folio">Folio: %1$s</string>
+    <string name="label_cliente">Cliente: %1$s</string>
+    <string name="label_telefono_corto">Tel: %1$s</string>
+    <string name="label_telefono_valor">Teléfono: %1$s</string>
+    <string name="label_motocicleta">Motocicleta: %1$s %2$s</string>
+    <string name="label_moto">Moto: %1$s %2$s</string>
+    <string name="label_moto_con_color">Moto: %1$s %2$s (%3$s)</string>
+    <string name="label_vehiculo">Vehículo: %1$s %2$s (%3$s)</string>
+    <string name="label_color">Color: %1$s</string>
+    <string name="label_placa">Placa: %1$s</string>
+    <string name="label_placa_bullet"> • Placa: %1$s</string>
+    <string name="label_anio">Año: %1$d</string>
+    <string name="label_vin">VIN: %1$s</string>
+    <string name="label_falla">Falla: %1$s</string>
+    <string name="label_motivo">Motivo: %1$s</string>
+    <string name="label_total">Total: %1$s</string>
+    <string name="label_recs">Recs: %1$s</string>
+    <string name="label_cobro">Cobro: %1$s</string>
+    <string name="label_servicio_motivo">Servicio: %1$s | Motivo: %2$s</string>
+    <string name="label_servicio_falla">Servicio: %1$s | Falla: %2$s</string>
+    <string name="label_minutos">%1$d min</string>
 
     <!-- Pantalla Recepción -->
     <string name="recepcion_titulo">Recepción de Unidad</string>
@@ -101,6 +130,7 @@
     <string name="recepcion_card_btn_entregar">COBRAR Y ENTREGAR AL CLIENTE</string>
     <string name="recepcion_dialog_entregar_titulo">¿Confirmar Entrega en Taller?</string>
     <string name="recepcion_dialog_entregar_btn">CONFIRMAR ENTREGA Y COBRO</string>
+    <string name="recepcion_dialog_entregar_monto">Monto a cobrar en mostrador: %1$s</string>
     <string name="recepcion_dialog_entregar_nota">Al confirmar, la orden se marcará como ENTREGADA y pasará al panel de Gerencia.</string>
     <string name="recepcion_recs_label">Recomendaciones mecánicas para el cliente:</string>
     <string name="recepcion_dialog_historial_titulo">Historial de Servicios: %1$s %2$s</string>
@@ -129,6 +159,21 @@
     <string name="recepcion_desc_miniatura_evidencia">Evidencia fotográfica #%1$d</string>
     <string name="recepcion_error_sin_camara">No se encontró una aplicación de cámara disponible en el dispositivo.</string>
     <string name="recepcion_btn_sincronizar_nube">Sincronizar Nube</string>
+    <string name="recepcion_error_sync_ordenes">Error al sincronizar órdenes: %1$s</string>
+    <string name="recepcion_error_nombre_obligatorio">El nombre del cliente es obligatorio.</string>
+    <string name="recepcion_error_telefono_digitos">El celular debe contener los 10 dígitos.</string>
+    <string name="recepcion_error_seleccionar_cliente">Primero debes seleccionar un cliente.</string>
+    <string name="recepcion_error_moto_campos_obligatorios">Marca, modelo y color son obligatorios.</string>
+    <string name="recepcion_error_preparar_camara">No se pudo preparar el archivo local para la cámara.</string>
+    <string name="recepcion_error_guardar_imagen">No se pudo guardar la imagen seleccionada.</string>
+    <string name="recepcion_error_copiar_galeria">No se pudo copiar la imagen de galería al almacenamiento local.</string>
+    <string name="recepcion_nube_exito">✓ Sincronización con Firebase completada.</string>
+    <string name="recepcion_nube_error">No se pudo sincronizar con Firebase. Verifique su conexión.</string>
+    <string name="recepcion_error_cliente_invalido">Ingresa nombre y teléfono de 10 dígitos del cliente (o selecciónalo arriba).</string>
+    <string name="recepcion_error_moto_invalida">Marca, modelo y color de la moto son obligatorios.</string>
+    <string name="recepcion_error_falla_obligatoria">Describe el problema o motivo de ingreso de la unidad.</string>
+    <string name="recepcion_entrega_exitosa">Orden %1$s entregada con éxito al cliente en mostrador.</string>
+    <string name="recepcion_error_registrar_entrega">No se pudo registrar la entrega: %1$s</string>
 
     <!-- Pantalla Taller -->
     <string name="taller_titulo">Tablero del Taller</string>
@@ -142,8 +187,11 @@
     <string name="taller_btn_entregar_si_paso">ENTREGAR AL CLIENTE EN TALLER</string>
     <string name="taller_badge_esperando_repartidor">Programada para Entrega a Domicilio (Esperando repartidor)</string>
     <string name="taller_badge_recoger_mostrador">Recoger en Mostrador / Taller</string>
+    <string name="taller_card_folio_cliente">%1$s • Cliente: %2$s</string>
+    <string name="taller_card_acumulado">Acumulado: %1$s (M.O: %2$s | Piezas: %3$s)</string>
     <string name="taller_dialog_entregar_titulo">¿Marcar Moto como Entregada?</string>
     <string name="taller_dialog_entregar_btn">CONFIRMAR ENTREGA</string>
+    <string name="taller_dialog_total_cobrado">Total cobrado: %1$s</string>
     <string name="taller_dialog_entregar_nota">Al confirmar, la orden se marcará como ENTREGADA y se registrará en las métricas de Gerencia.</string>
     <string name="taller_modal_titulo">Hoja de Taller: %1$s %2$s</string>
     <string name="taller_modal_vin_label">Número de Serie / VIN (Opcional)</string>
@@ -152,6 +200,8 @@
     <string name="taller_modal_label_costo_mxn">$ MXN</string>
     <string name="taller_modal_refacciones_titulo">Refacciones y Repuestos Utilizados</string>
     <string name="taller_modal_label_pieza">Pieza o repuesto</string>
+    <string name="taller_desc_agregar_trabajo">Agregar trabajo</string>
+    <string name="taller_desc_agregar_refaccion">Agregar refacción</string>
     <string name="taller_modal_label_recs">Recomendaciones técnicas para el cliente...</string>
     <string name="taller_desc_dictado_recs">Dictar recomendaciones</string>
     <string name="taller_dictado_prompt_recs">Dicta las recomendaciones técnicas para el cliente...</string>
@@ -186,6 +236,13 @@
     <string name="entregas_dialog_confirmar_total">Total a cobrar al cliente: %1$s</string>
     <string name="entregas_dialog_confirmar_tarifa_habitual">La tarifa habitual de %1$s se actualizará automáticamente a %2$s.</string>
     <string name="entregas_moto_color">%1$s %2$s • Color: %3$s</string>
+    <string name="entregas_error_consultar">Error al consultar las órdenes de entrega: %1$s</string>
+    <string name="entregas_exito_en_camino">Orden %1$s marcada EN CAMINO.</string>
+    <string name="entregas_error_en_camino">No se pudo actualizar a EN CAMINO: %1$s</string>
+    <string name="entregas_exito_entregada">Orden %1$s ENTREGADA. Costo de envío ($%2$s) guardado en ficha del cliente.</string>
+    <string name="entregas_error_entregar">Error al marcar como entregada: %1$s</string>
+    <string name="entregas_exito_costo_actualizado">Costo de envío actualizado a $%1$s.</string>
+    <string name="entregas_error_costo">No se pudo actualizar el costo de envío: %1$s</string>
 
     <!-- Pantalla Gerencia -->
     <string name="gerencia_titulo">Panel de Gerencia</string>
@@ -217,6 +274,16 @@
     <string name="gerencia_dialog_fecha_titulo">Seleccionar Rango de Consulta</string>
     <string name="gerencia_dialog_fecha_btn_aplicar">Aplicar Rango</string>
     <string name="gerencia_dialog_detalle_titulo">Detalle de la Orden: %1$s</string>
+    <string name="gerencia_detalle_mano_obra">Mano de Obra:</string>
+    <string name="gerencia_detalle_total_mo">Total M.O.: %1$s</string>
+    <string name="gerencia_detalle_refacciones">Refacciones:</string>
+    <string name="gerencia_detalle_total_refacciones">Total Refacciones: %1$s</string>
+    <string name="gerencia_detalle_envio">Envío a Domicilio:</string>
+    <string name="gerencia_detalle_total_facturado">TOTAL FACTURADO:</string>
+    <string name="gerencia_detalle_recomendaciones">Recomendaciones Mecánicas:</string>
+    <string name="gerencia_dialog_historial_unidad">Historial de la Unidad</string>
     <string name="gerencia_directorio_buscar">Buscar cliente o motocicleta...</string>
     <string name="gerencia_directorio_vacio">No hay clientes ni motocicletas registradas aún.</string>
+    <string name="gerencia_error_consultar">Error al consultar las órdenes de gerencia: %1$s</string>
+    <string name="gerencia_error_datos_demo">No se pudieron insertar los datos demo: %1$s</string>
 </resources>
