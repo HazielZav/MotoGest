@@ -34,6 +34,7 @@ import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.ui.components.MotoThumbnail
 import com.TallerJC.motogest.ui.util.SpeechRecognizerHelper
 import com.TallerJC.motogest.ui.util.getLabelRes
 import java.text.NumberFormat
@@ -230,28 +231,45 @@ fun TarjetaOrdenMecanico(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = "${moto.brand} ${moto.model} (${moto.color})",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                MotoThumbnail(
+                    photoUrl = moto.photoUrl,
+                    size = 60.dp,
+                    cornerRadius = 10.dp
                 )
-                Badge(containerColor = MaterialTheme.colorScheme.primary) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${moto.brand} ${moto.model} (${moto.color})",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Badge(containerColor = MaterialTheme.colorScheme.primary) {
+                            Text(
+                                text = "${minutosTranscurridos} min",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
                     Text(
-                        text = "${minutosTranscurridos} min",
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
+                        text = "${orden.folio} • Cliente: ${cliente.name}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-
-            Text(
-                text = "${orden.folio} • Cliente: ${cliente.name}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
 
             val serviceTypeEnum = runCatching { ServiceType.valueOf(orden.serviceType) }.getOrNull()
             val serviceLabel = if (serviceTypeEnum != null) stringResource(serviceTypeEnum.getLabelRes()) else orden.serviceType.replace("_", " ")
@@ -461,12 +479,30 @@ fun ModalDetalleMecanico(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = stringResource(R.string.taller_modal_titulo, ordenDetalle.motorcycle.brand, ordenDetalle.motorcycle.model),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                MotoThumbnail(
+                    photoUrl = ordenDetalle.motorcycle.photoUrl,
+                    size = 52.dp,
+                    cornerRadius = 10.dp
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.taller_modal_titulo, ordenDetalle.motorcycle.brand, ordenDetalle.motorcycle.model),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "${ordenDetalle.order.folio} • ${ordenDetalle.motorcycle.color}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             // EDICIÓN RÁPIDA DE VIN
             OutlinedTextField(

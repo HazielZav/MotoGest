@@ -67,6 +67,11 @@ class OperacionesRepository(
         remoteDataSource?.uploadMotorcycle(moto.toDto())
     }
 
+    override suspend fun actualizarMoto(moto: MotorcycleEntity) {
+        workOrderDao.updateMotorcycle(moto)
+        remoteDataSource?.uploadMotorcycle(moto.toDto())
+    }
+
     override suspend fun cambiarEstadoOrden(ordenActual: WorkOrderEntity, nuevoEstado: OrderStatus) {
         val ahora = System.currentTimeMillis()
         workOrderDao.updateOrderStatus(

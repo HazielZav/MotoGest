@@ -81,6 +81,14 @@ class TallerViewModelTest {
             emitCurrent()
         }
 
+        override suspend fun updateMotorcycle(motorcycle: MotorcycleEntity) {
+            val idx = motorcycles.indexOfFirst { it.id == motorcycle.id }
+            if (idx != -1) {
+                motorcycles[idx] = motorcycle
+                emitCurrent()
+            }
+        }
+
         val workItems = mutableListOf<WorkItemEntity>()
         val spareParts = mutableListOf<SparePartEntity>()
 

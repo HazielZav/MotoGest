@@ -2,7 +2,9 @@ package com.TallerJC.motogest.ui.recepcion
 
 import android.content.ActivityNotFoundException
 import android.content.res.Configuration
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,6 +29,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -34,16 +38,22 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.TallerJC.motogest.R
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
+import com.TallerJC.motogest.data.local.storage.StoredImageFile
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.ui.components.MotoThumbnail
 import com.TallerJC.motogest.ui.util.SpeechRecognizerHelper
 import com.TallerJC.motogest.ui.util.getLabelRes
 import java.text.NumberFormat
 import java.util.Locale
+
+private const val DESTINO_FOTO_MOTO = "MOTO"
+private const val DESTINO_FOTO_EVIDENCIA = "EVIDENCIA"
 
 @Composable
 fun PantallaRecepcion(
@@ -51,6 +61,75 @@ fun PantallaRecepcion(
 ) {
     val estadoUi by viewModel.estadoUi.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    // Estado persistente entre recomposiciones/rotación mientras se usa la cámara nativa o el Photo Picker
+    var capturaPendienteUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var capturaPendientePath by rememberSaveable { mutableStateOf<String?>(null) }
+    var capturaPendienteNombre by rememberSaveable { mutableStateOf<String?>(null) }
+    var destinoCaptura by rememberSaveable { mutableStateOf(DESTINO_FOTO_EVIDENCIA) }
+
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { exito ->
+        val uri = capturaPendienteUri
+        val path = capturaPendientePath
+        val fileName = capturaPendienteNombre
+        capturaPendienteUri = null
+        capturaPendientePath = null
+        capturaPendienteNombre = null
+
+        if (exito && uri != null && path != null && fileName != null) {
+            val destino = StoredImageFile(
+                localUri = uri,
+                localPath = path,
+                fileName = fileName
+            )
+            if (destinoCaptura == DESTINO_FOTO_MOTO) {
+                viewModel.confirmarFotoCamaraMoto(destino)
+            } else {
+                viewModel.confirmarFotoCamaraEvidencia(destino)
+            }
+        } else {
+            viewModel.cancelarCapturaCamara(path)
+        }
+    }
+
+    val pickVisualMediaLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { sourceUri ->
+        if (sourceUri != null) {
+            if (destinoCaptura == DESTINO_FOTO_MOTO) {
+                viewModel.procesarFotoGaleriaMoto(sourceUri)
+            } else {
+                viewModel.procesarFotoGaleriaEvidencia(sourceUri)
+            }
+        }
+    }
+
+    fun lanzarCamaraNativa(destino: String, prefix: String) {
+        val archivoDestino = viewModel.prepararDestinoCamara(prefix) ?: return
+        destinoCaptura = destino
+        capturaPendienteUri = archivoDestino.localUri
+        capturaPendientePath = archivoDestino.localPath
+        capturaPendienteNombre = archivoDestino.fileName
+        try {
+            takePictureLauncher.launch(Uri.parse(archivoDestino.localUri))
+        } catch (_: ActivityNotFoundException) {
+            viewModel.cancelarCapturaCamara(archivoDestino.localPath)
+            capturaPendienteUri = null
+            capturaPendientePath = null
+            capturaPendienteNombre = null
+            viewModel.reportarErrorCamara(context.getString(R.string.recepcion_error_sin_camara))
+        }
+    }
+
+    fun lanzarGaleriaNativa(destino: String) {
+        destinoCaptura = destino
+        pickVisualMediaLauncher.launch(
+            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+        )
+    }
+
     var campoDictadoActivo by rememberSaveable { mutableStateOf(CampoDictado.FALLA_REPORTADA.name) }
 
     val speechLauncher = rememberLauncherForActivityResult(
@@ -96,6 +175,7 @@ fun PantallaRecepcion(
         onSeleccionarMoto = viewModel::seleccionarMoto,
         onDeseleccionarMoto = viewModel::deseleccionarMoto,
         onAbrirDialogoNuevaMoto = viewModel::abrirDialogoNuevaMoto,
+        onAbrirDialogoEditarMoto = viewModel::abrirDialogoEditarMoto,
         onCerrarDialogoNuevaMoto = viewModel::cerrarDialogoNuevaMoto,
         onNuevaMotoMarcaCambio = viewModel::actualizarNuevaMotoMarca,
         onNuevaMotoModeloCambio = viewModel::actualizarNuevaMotoModelo,
@@ -103,7 +183,9 @@ fun PantallaRecepcion(
         onNuevaMotoPlacaCambio = viewModel::actualizarNuevaMotoPlaca,
         onNuevaMotoAnioCambio = viewModel::actualizarNuevaMotoAnio,
         onNuevaMotoVinCambio = viewModel::actualizarNuevaMotoVin,
-        onNuevaMotoFotoCambio = viewModel::actualizarNuevaMotoFoto,
+        onTomarFotoNuevaMoto = { lanzarCamaraNativa(DESTINO_FOTO_MOTO, "moto") },
+        onElegirFotoNuevaMoto = { lanzarGaleriaNativa(DESTINO_FOTO_MOTO) },
+        onQuitarFotoNuevaMoto = viewModel::quitarFotoNuevaMoto,
         onGuardarNuevaMoto = viewModel::guardarYSeleccionarNuevaMoto,
         onVerHistorialMoto = viewModel::verHistorialMoto,
         onCerrarHistorialMoto = viewModel::cerrarModalHistorial,
@@ -117,7 +199,9 @@ fun PantallaRecepcion(
         onServicioSeleccionado = viewModel::seleccionarServicio,
         onFallaCambio = viewModel::actualizarFallaReportada,
         onDictarFalla = { lanzarDictadoVoz(CampoDictado.FALLA_REPORTADA) },
-        onAgregarFoto = viewModel::agregarFotoEvidenciaSimulada,
+        onTomarFotoEvidencia = { lanzarCamaraNativa(DESTINO_FOTO_EVIDENCIA, "evidencia") },
+        onElegirFotoEvidencia = { lanzarGaleriaNativa(DESTINO_FOTO_EVIDENCIA) },
+        onEliminarFotoEvidencia = viewModel::eliminarFotoEvidencia,
         onNotasDanosCambio = viewModel::actualizarNotasDanos,
         onDictarNotasDanos = { lanzarDictadoVoz(CampoDictado.NOTAS_DANOS) },
         onConsumirMensajeDictado = viewModel::consumirMensajeDictado,
@@ -155,6 +239,7 @@ fun PantallaRecepcionContenido(
     onSeleccionarMoto: (MotorcycleEntity) -> Unit = {},
     onDeseleccionarMoto: () -> Unit = {},
     onAbrirDialogoNuevaMoto: () -> Unit = {},
+    onAbrirDialogoEditarMoto: (MotorcycleEntity) -> Unit = {},
     onCerrarDialogoNuevaMoto: () -> Unit = {},
     onNuevaMotoMarcaCambio: (String) -> Unit = {},
     onNuevaMotoModeloCambio: (String) -> Unit = {},
@@ -162,7 +247,9 @@ fun PantallaRecepcionContenido(
     onNuevaMotoPlacaCambio: (String) -> Unit = {},
     onNuevaMotoAnioCambio: (String) -> Unit = {},
     onNuevaMotoVinCambio: (String) -> Unit = {},
-    onNuevaMotoFotoCambio: (String) -> Unit = {},
+    onTomarFotoNuevaMoto: () -> Unit = {},
+    onElegirFotoNuevaMoto: () -> Unit = {},
+    onQuitarFotoNuevaMoto: () -> Unit = {},
     onGuardarNuevaMoto: () -> Unit = {},
     onRegistrarNuevaMoto: () -> Unit = onAbrirDialogoNuevaMoto,
     onVerHistorialMoto: (MotorcycleEntity) -> Unit = {},
@@ -177,7 +264,9 @@ fun PantallaRecepcionContenido(
     onServicioSeleccionado: (ServiceType) -> Unit,
     onFallaCambio: (String) -> Unit,
     onDictarFalla: () -> Unit = {},
-    onAgregarFoto: () -> Unit,
+    onTomarFotoEvidencia: () -> Unit = {},
+    onElegirFotoEvidencia: () -> Unit = {},
+    onEliminarFotoEvidencia: (Int) -> Unit = {},
     onNotasDanosCambio: (String) -> Unit,
     onDictarNotasDanos: () -> Unit = {},
     onConsumirMensajeDictado: () -> Unit = {},
@@ -619,19 +708,46 @@ fun PantallaRecepcionContenido(
                                         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                                             ) {
-                                                Text(
-                                                    text = "${moto.brand} ${moto.model}",
-                                                    fontWeight = FontWeight.Bold,
-                                                    style = MaterialTheme.typography.bodyMedium
+                                                MotoThumbnail(
+                                                    photoUrl = moto.photoUrl,
+                                                    size = 48.dp,
+                                                    cornerRadius = 8.dp
                                                 )
-                                                if (seleccionada) {
-                                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Text(
+                                                            text = "${moto.brand} ${moto.model}",
+                                                            fontWeight = FontWeight.Bold,
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            modifier = Modifier.weight(1f)
+                                                        )
+                                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                            IconButton(
+                                                                onClick = { onAbrirDialogoEditarMoto(moto) },
+                                                                modifier = Modifier.size(28.dp)
+                                                            ) {
+                                                                Icon(
+                                                                    Icons.Default.Edit,
+                                                                    contentDescription = stringResource(R.string.recepcion_btn_editar_moto),
+                                                                    tint = MaterialTheme.colorScheme.primary,
+                                                                    modifier = Modifier.size(16.dp)
+                                                                )
+                                                            }
+                                                            if (seleccionada) {
+                                                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                                            }
+                                                        }
+                                                    }
+                                                    Text("Color: ${moto.color}", style = MaterialTheme.typography.bodySmall)
                                                 }
                                             }
-                                            Text("Color: ${moto.color}", style = MaterialTheme.typography.bodySmall)
                                             moto.plate?.let { Text("Placa: $it", style = MaterialTheme.typography.bodySmall) }
                                             moto.year?.let { Text("Año: $it", style = MaterialTheme.typography.bodySmall) }
                                             Spacer(modifier = Modifier.height(4.dp))
@@ -663,7 +779,11 @@ fun PantallaRecepcionContenido(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    Icon(Icons.Default.TwoWheeler, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(32.dp))
+                                    MotoThumbnail(
+                                        photoUrl = estadoUi.motoSeleccionada.photoUrl,
+                                        size = 52.dp,
+                                        cornerRadius = 8.dp
+                                    )
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = stringResource(R.string.recepcion_moto_seleccionada_label),
@@ -685,8 +805,23 @@ fun PantallaRecepcionContenido(
                                             Text(text = extraInfo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
-                                    TextButton(onClick = onDeseleccionarMoto) {
-                                        Text(stringResource(R.string.recepcion_btn_cambiar_moto))
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        TextButton(
+                                            onClick = { onAbrirDialogoEditarMoto(estadoUi.motoSeleccionada) },
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                            modifier = Modifier.height(32.dp)
+                                        ) {
+                                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(stringResource(R.string.recepcion_btn_editar_moto), fontSize = 12.sp)
+                                        }
+                                        TextButton(
+                                            onClick = onDeseleccionarMoto,
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                            modifier = Modifier.height(32.dp)
+                                        ) {
+                                            Text(stringResource(R.string.recepcion_btn_cambiar_moto), fontSize = 12.sp)
+                                        }
                                     }
                                 }
                             }
@@ -767,7 +902,7 @@ fun PantallaRecepcionContenido(
                         maxLines = 4
                     )
 
-                    // Evidencia fotográfica
+                    // Evidencia fotográfica (Cámara nativa + Photo Picker con miniaturas locales)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -776,28 +911,70 @@ fun PantallaRecepcionContenido(
                         Text(
                             text = stringResource(R.string.recepcion_seccion_evidencia, estadoUi.fotosEvidencia.size),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
                         )
-                        TextButton(
-                            onClick = onAgregarFoto,
-                            enabled = estadoUi.fotosEvidencia.size < 5
-                        ) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(stringResource(R.string.recepcion_desc_foto))
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            TextButton(
+                                onClick = onTomarFotoEvidencia,
+                                enabled = estadoUi.fotosEvidencia.size < RecepcionViewModel.MAX_FOTOS_EVIDENCIA && !estadoUi.procesandoImagen
+                            ) {
+                                Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(stringResource(R.string.recepcion_btn_camara))
+                            }
+                            TextButton(
+                                onClick = onElegirFotoEvidencia,
+                                enabled = estadoUi.fotosEvidencia.size < RecepcionViewModel.MAX_FOTOS_EVIDENCIA && !estadoUi.procesandoImagen
+                            ) {
+                                Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(stringResource(R.string.recepcion_btn_galeria))
+                            }
                         }
                     }
 
+                    if (estadoUi.procesandoImagen) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
+
                     if (estadoUi.fotosEvidencia.isNotEmpty()) {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(estadoUi.fotosEvidencia) { foto ->
-                                AssistChip(
-                                    onClick = { },
-                                    label = { Text(foto.substringAfterLast("/")) },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            itemsIndexed(
+                                items = estadoUi.fotosEvidencia,
+                                key = { index, uri -> "${index}_$uri" }
+                            ) { index, fotoUri ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(92.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                ) {
+                                    AsyncImage(
+                                        model = fotoUri,
+                                        contentDescription = stringResource(R.string.recepcion_desc_miniatura_evidencia, index + 1),
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                    Surface(
+                                        onClick = { onEliminarFotoEvidencia(index) },
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.65f),
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(4.dp)
+                                            .size(24.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = stringResource(R.string.recepcion_desc_eliminar_foto),
+                                                tint = MaterialTheme.colorScheme.surface,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
                                     }
-                                )
+                                }
                             }
                         }
                     }
@@ -1060,15 +1237,31 @@ fun PantallaRecepcionContenido(
             )
         }
 
-        // 2. DIÁLOGO: NUEVA MOTOCICLETA
+        // 2. DIÁLOGO: NUEVA O EDITAR MOTOCICLETA
         if (estadoUi.mostrarDialogoNuevaMoto) {
             val nombreCliente = estadoUi.clienteSeleccionado?.name ?: ""
+            val esEdicion = estadoUi.motoEnEdicion != null
+            val previewFotoUri = estadoUi.nuevaMotoFoto?.localUri
+                ?: estadoUi.nuevaMotoFotoUri.takeIf { it.isNotBlank() && !it.startsWith("local://") }
             AlertDialog(
                 onDismissRequest = onCerrarDialogoNuevaMoto,
-                icon = { Icon(Icons.Default.TwoWheeler, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp)) },
+                icon = {
+                    Icon(
+                        if (esEdicion) Icons.Default.Edit else Icons.Default.TwoWheeler,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                },
                 title = {
                     Column {
-                        Text(stringResource(R.string.recepcion_dialog_nueva_moto_titulo), fontWeight = FontWeight.Bold)
+                        Text(
+                            text = stringResource(
+                                if (esEdicion) R.string.recepcion_dialog_editar_moto_titulo
+                                else R.string.recepcion_dialog_nueva_moto_titulo
+                            ),
+                            fontWeight = FontWeight.Bold
+                        )
                         Text(
                             text = stringResource(R.string.recepcion_dialog_nueva_moto_subtitulo, nombreCliente),
                             style = MaterialTheme.typography.bodySmall,
@@ -1135,27 +1328,77 @@ fun PantallaRecepcionContenido(
                                 singleLine = true
                             )
                         }
-                        // Botón de captura / simulación de foto
-                        OutlinedButton(
-                            onClick = {
-                                onNuevaMotoFotoCambio("file://moto_${System.currentTimeMillis()}.jpg")
-                            },
-                            modifier = Modifier.fillMaxWidth()
+                        // Captura nativa / galería de foto de la motocicleta con previsualización
+                        if (previewFotoUri != null) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(140.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                            ) {
+                                AsyncImage(
+                                    model = previewFotoUri,
+                                    contentDescription = stringResource(R.string.recepcion_desc_miniatura_moto),
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                Surface(
+                                    onClick = onQuitarFotoNuevaMoto,
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.65f),
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(6.dp)
+                                        .size(28.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = stringResource(R.string.recepcion_desc_eliminar_foto),
+                                            tint = MaterialTheme.colorScheme.surface,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (estadoUi.procesandoImagen) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                if (estadoUi.nuevaMotoFotoUri.startsWith("file://"))
-                                    stringResource(R.string.recepcion_foto_capturada)
-                                else
-                                    stringResource(R.string.recepcion_foto_tomar)
-                            )
+                            OutlinedButton(
+                                onClick = onTomarFotoNuevaMoto,
+                                enabled = !estadoUi.procesandoImagen,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(stringResource(R.string.recepcion_btn_camara))
+                            }
+                            OutlinedButton(
+                                onClick = onElegirFotoNuevaMoto,
+                                enabled = !estadoUi.procesandoImagen,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(stringResource(R.string.recepcion_btn_galeria))
+                            }
                         }
                     }
                 },
                 confirmButton = {
                     Button(onClick = onGuardarNuevaMoto) {
-                        Text(stringResource(R.string.recepcion_dialog_nueva_moto_guardar))
+                        Text(
+                            stringResource(
+                                if (esEdicion) R.string.recepcion_dialog_editar_moto_guardar
+                                else R.string.recepcion_dialog_nueva_moto_guardar
+                            )
+                        )
                     }
                 },
                 dismissButton = {
@@ -1354,25 +1597,35 @@ fun TarjetaEntregaTaller(
                 }
             }
 
-            // Datos del Cliente
+            // Identificación visual de la Moto + Datos del Cliente
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
-                Text(text = cliente.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = "• ${cliente.phone}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-
-            // Datos de la Moto
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(Icons.Default.TwoWheeler, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-                val placaTxt = moto.plate?.let { " • Placa: $it" } ?: ""
-                Text(text = "${moto.brand} ${moto.model} (${moto.color})$placaTxt", style = MaterialTheme.typography.bodyMedium)
+                MotoThumbnail(
+                    photoUrl = moto.photoUrl,
+                    size = 56.dp,
+                    cornerRadius = 10.dp
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val placaTxt = moto.plate?.let { " • Placa: $it" } ?: ""
+                    Text(
+                        text = "${moto.brand} ${moto.model} (${moto.color})$placaTxt",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
+                        Text(text = "${cliente.name} • ${cliente.phone}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
 
             // Servicio & Falla
@@ -1487,7 +1740,6 @@ fun PantallaRecepcionPreview() {
             onVinCambio = {},
             onServicioSeleccionado = {},
             onFallaCambio = {},
-            onAgregarFoto = {},
             onNotasDanosCambio = {},
             onModalidadCambio = {},
             onDescartarAlertaDomicilio = {},

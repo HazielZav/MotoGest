@@ -35,6 +35,7 @@ import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.ui.components.MotoThumbnail
 import com.TallerJC.motogest.ui.theme.MotoGestTheme
 import com.TallerJC.motogest.ui.util.getLabelRes
 import java.text.NumberFormat
@@ -541,15 +542,31 @@ fun PantallaGerencia(
                                             Text(fechaStr, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
 
-                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            Icon(Icons.Filled.Person, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
-                                            Text(item.client.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                                        }
-
-                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            Icon(Icons.Filled.TwoWheeler, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-                                            val placa = item.motorcycle.plate?.let { " ($it)" } ?: ""
-                                            Text("${item.motorcycle.brand} ${item.motorcycle.model}$placa", fontSize = 13.sp)
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            MotoThumbnail(
+                                                photoUrl = item.motorcycle.photoUrl,
+                                                size = 52.dp,
+                                                cornerRadius = 8.dp
+                                            )
+                                            Column(
+                                                modifier = Modifier.weight(1f),
+                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                    Icon(Icons.Filled.Person, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
+                                                    Text(item.client.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                                }
+                                                val placa = item.motorcycle.plate?.let { " ($it)" } ?: ""
+                                                Text(
+                                                    text = "${item.motorcycle.brand} ${item.motorcycle.model}$placa • ${item.motorcycle.color}",
+                                                    fontSize = 13.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
                                         }
 
                                         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
@@ -626,15 +643,32 @@ fun PantallaGerencia(
                                                 Text(ordenDetalle.order.folio, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                                 Badge { Text(ordenDetalle.order.status) }
                                             }
-                                            Text(
-                                                text = "${ordenDetalle.client.name} • Tel: ${ordenDetalle.client.phone}",
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.SemiBold
-                                            )
-                                            Text(
-                                                text = "Moto: ${ordenDetalle.motorcycle.brand} ${ordenDetalle.motorcycle.model} (${ordenDetalle.motorcycle.color})",
-                                                style = MaterialTheme.typography.bodySmall
-                                            )
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                            ) {
+                                                MotoThumbnail(
+                                                    photoUrl = ordenDetalle.motorcycle.photoUrl,
+                                                    size = 52.dp,
+                                                    cornerRadius = 8.dp
+                                                )
+                                                Column(
+                                                    modifier = Modifier.weight(1f),
+                                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "${ordenDetalle.client.name} • Tel: ${ordenDetalle.client.phone}",
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        fontWeight = FontWeight.SemiBold
+                                                    )
+                                                    Text(
+                                                        text = "Moto: ${ordenDetalle.motorcycle.brand} ${ordenDetalle.motorcycle.model} (${ordenDetalle.motorcycle.color})",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -675,9 +709,22 @@ fun PantallaGerencia(
                         Text("Cliente: ${cliente.name}", fontWeight = FontWeight.Bold)
                         Text("Teléfono: ${cliente.phone} • ${cliente.address ?: stringResource(R.string.entregas_sin_direccion)}")
                         HorizontalDivider()
-                        Text("Vehículo: ${moto.brand} ${moto.model} (${moto.color})", fontWeight = FontWeight.Bold)
-                        moto.plate?.let { Text("Placa: $it") }
-                        moto.vin?.let { Text("VIN: $it") }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            MotoThumbnail(
+                                photoUrl = moto.photoUrl,
+                                size = 56.dp,
+                                cornerRadius = 8.dp
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Vehículo: ${moto.brand} ${moto.model} (${moto.color})", fontWeight = FontWeight.Bold)
+                                moto.plate?.let { Text("Placa: $it", style = MaterialTheme.typography.bodySmall) }
+                                moto.vin?.let { Text("VIN: $it", style = MaterialTheme.typography.bodySmall) }
+                            }
+                        }
                         HorizontalDivider()
                         Text("Mano de Obra:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         if (workItems.isEmpty()) {

@@ -102,6 +102,14 @@ class FakeWorkOrderDao(
         motorcycles.forEach { insertMotorcycle(it) }
     }
 
+    override suspend fun updateMotorcycle(motorcycle: MotorcycleEntity) {
+        val index = motorcyclesList.indexOfFirst { it.id == motorcycle.id }
+        if (index != -1) {
+            motorcyclesList[index] = motorcycle
+            emitState()
+        }
+    }
+
     override suspend fun insertWorkItem(item: WorkItemEntity) {
         workItemsList.add(item)
     }

@@ -3,6 +3,7 @@ package com.TallerJC.motogest.ui.recepcion
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
+import com.TallerJC.motogest.data.local.storage.StoredImageFile
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 
@@ -41,15 +42,17 @@ data class RecepcionUiState(
     val historialMotoSeleccionada: List<WorkOrderWithDetails> = emptyList(),
     val mostrarModalHistorial: Boolean = false,
 
-    // Diálogo para nueva motocicleta
+    // Diálogo para nueva o edición de motocicleta
     val mostrarDialogoNuevaMoto: Boolean = false,
+    val motoEnEdicion: MotorcycleEntity? = null,
     val nuevaMotoMarca: String = "",
     val nuevaMotoModelo: String = "",
     val nuevaMotoColor: String = "",
     val nuevaMotoPlaca: String = "",
     val nuevaMotoAnio: String = "",
     val nuevaMotoVin: String = "",
-    val nuevaMotoFotoUri: String = "local://moto_default.jpg",
+    val nuevaMotoFotoUri: String = "",
+    val nuevaMotoFoto: StoredImageFile? = null,
     val errorNuevaMoto: String? = null,
 
     // Datos de la Moto activa
@@ -59,12 +62,14 @@ data class RecepcionUiState(
     val placaOpcional: String = "",
     val anioOpcional: String = "",
     val vinOpcional: String = "",
-    val fotoMotoUri: String = "local://moto_default.jpg",
+    val fotoMotoUri: String = "",
 
     // Orden de trabajo
     val servicioSeleccionado: ServiceType = ServiceType.SERVICIO_GENERAL,
     val fallaReportada: String = "",
     val fotosEvidencia: List<String> = emptyList(),
+    val fotosEvidenciaCapturadas: List<StoredImageFile> = emptyList(),
+    val procesandoImagen: Boolean = false,
     val notasDanosPrevios: String = "",
     val modalidadEntrega: DeliveryType = DeliveryType.TALLER,
 
