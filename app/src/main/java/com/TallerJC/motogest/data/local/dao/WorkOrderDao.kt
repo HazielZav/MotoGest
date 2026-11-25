@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import com.TallerJC.motogest.data.local.entity.ClientEntity
 import com.TallerJC.motogest.data.local.entity.MotorcycleEntity
 import com.TallerJC.motogest.data.local.entity.SparePartEntity
@@ -66,6 +67,13 @@ interface WorkOrderDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMotorcycles(motorcycles: List<MotorcycleEntity>)
+
+    /**
+     * Actualización segura mediante SQL UPDATE (evita DELETE+INSERT de REPLACE que dispararía
+     * ON DELETE CASCADE sobre work_orders y media_records).
+     */
+    @Update
+    suspend fun updateMotorcycle(motorcycle: MotorcycleEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWorkItem(item: WorkItemEntity)

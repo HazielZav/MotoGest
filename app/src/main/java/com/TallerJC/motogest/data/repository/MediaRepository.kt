@@ -4,6 +4,7 @@ import com.TallerJC.motogest.data.local.dao.MediaDao
 import com.TallerJC.motogest.data.local.entity.MediaEntity
 import com.TallerJC.motogest.data.local.storage.LocalImageStorage
 import com.TallerJC.motogest.domain.model.enums.MediaSyncStatus
+import com.TallerJC.motogest.domain.model.enums.MediaTag
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -17,6 +18,7 @@ interface MediaRepository {
     suspend fun saveImageMetadata(media: MediaEntity)
     suspend fun saveImagesMetadata(mediaList: List<MediaEntity>)
     suspend fun deleteImage(mediaId: String)
+    suspend fun deleteMotorcycleProfileImages(motorcycleId: String)
 
     // --- Contrato para el equipo de nube (Valet Key / WorkManager) ---
     suspend fun getPendingUploads(): List<MediaEntity>
@@ -53,6 +55,14 @@ class LocalMediaRepository(
         mediaDao.deleteMedia(mediaId)
         if (existing != null) {
             imageStorage?.deleteLocalFile(existing.localPath)
+        }
+    }
+
+    override suspend fun deleteMotorcycleProfileImages(motorcycleId: String) {
+        val existing = mediaDao.getMediaByMotorcycleIdAndTag(motorcycleId, MediaTag.MOTO_PROFILE.name)
+        mediaDao.deleteMediaByMotorcycleIdAndTag(motorcycleId, MediaTag.MOTO_PROFILE.name)
+        existing.forEach { media ->
+            imageStorage?.deleteLocalFile(media.localPath)
         }
     }
 

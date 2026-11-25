@@ -146,6 +146,7 @@ fun PantallaRecepcion(
         onSeleccionarMoto = viewModel::seleccionarMoto,
         onDeseleccionarMoto = viewModel::deseleccionarMoto,
         onAbrirDialogoNuevaMoto = viewModel::abrirDialogoNuevaMoto,
+        onAbrirDialogoEditarMoto = viewModel::abrirDialogoEditarMoto,
         onCerrarDialogoNuevaMoto = viewModel::cerrarDialogoNuevaMoto,
         onNuevaMotoMarcaCambio = viewModel::actualizarNuevaMotoMarca,
         onNuevaMotoModeloCambio = viewModel::actualizarNuevaMotoModelo,
@@ -206,6 +207,7 @@ fun PantallaRecepcionContenido(
     onSeleccionarMoto: (MotorcycleEntity) -> Unit = {},
     onDeseleccionarMoto: () -> Unit = {},
     onAbrirDialogoNuevaMoto: () -> Unit = {},
+    onAbrirDialogoEditarMoto: (MotorcycleEntity) -> Unit = {},
     onCerrarDialogoNuevaMoto: () -> Unit = {},
     onNuevaMotoMarcaCambio: (String) -> Unit = {},
     onNuevaMotoModeloCambio: (String) -> Unit = {},
@@ -677,10 +679,24 @@ fun PantallaRecepcionContenido(
                                                 Text(
                                                     text = "${moto.brand} ${moto.model}",
                                                     fontWeight = FontWeight.Bold,
-                                                    style = MaterialTheme.typography.bodyMedium
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    modifier = Modifier.weight(1f)
                                                 )
-                                                if (seleccionada) {
-                                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    IconButton(
+                                                        onClick = { onAbrirDialogoEditarMoto(moto) },
+                                                        modifier = Modifier.size(28.dp)
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Default.Edit,
+                                                            contentDescription = stringResource(R.string.recepcion_btn_editar_moto),
+                                                            tint = MaterialTheme.colorScheme.primary,
+                                                            modifier = Modifier.size(16.dp)
+                                                        )
+                                                    }
+                                                    if (seleccionada) {
+                                                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                                    }
                                                 }
                                             }
                                             Text("Color: ${moto.color}", style = MaterialTheme.typography.bodySmall)
@@ -751,8 +767,23 @@ fun PantallaRecepcionContenido(
                                             Text(text = extraInfo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
-                                    TextButton(onClick = onDeseleccionarMoto) {
-                                        Text(stringResource(R.string.recepcion_btn_cambiar_moto))
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        TextButton(
+                                            onClick = { onAbrirDialogoEditarMoto(estadoUi.motoSeleccionada) },
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                            modifier = Modifier.height(32.dp)
+                                        ) {
+                                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(stringResource(R.string.recepcion_btn_editar_moto), fontSize = 12.sp)
+                                        }
+                                        TextButton(
+                                            onClick = onDeseleccionarMoto,
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                            modifier = Modifier.height(32.dp)
+                                        ) {
+                                            Text(stringResource(R.string.recepcion_btn_cambiar_moto), fontSize = 12.sp)
+                                        }
                                     }
                                 }
                             }
@@ -1132,15 +1163,31 @@ fun PantallaRecepcionContenido(
             )
         }
 
-        // 2. DIÁLOGO: NUEVA MOTOCICLETA
+        // 2. DIÁLOGO: NUEVA O EDITAR MOTOCICLETA
         if (estadoUi.mostrarDialogoNuevaMoto) {
             val nombreCliente = estadoUi.clienteSeleccionado?.name ?: ""
+            val esEdicion = estadoUi.motoEnEdicion != null
+            val previewFotoUri = estadoUi.nuevaMotoFoto?.localUri
+                ?: estadoUi.nuevaMotoFotoUri.takeIf { it.isNotBlank() && !it.startsWith("local://") }
             AlertDialog(
                 onDismissRequest = onCerrarDialogoNuevaMoto,
-                icon = { Icon(Icons.Default.TwoWheeler, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp)) },
+                icon = {
+                    Icon(
+                        if (esEdicion) Icons.Default.Edit else Icons.Default.TwoWheeler,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                },
                 title = {
                     Column {
-                        Text(stringResource(R.string.recepcion_dialog_nueva_moto_titulo), fontWeight = FontWeight.Bold)
+                        Text(
+                            text = stringResource(
+                                if (esEdicion) R.string.recepcion_dialog_editar_moto_titulo
+                                else R.string.recepcion_dialog_nueva_moto_titulo
+                            ),
+                            fontWeight = FontWeight.Bold
+                        )
                         Text(
                             text = stringResource(R.string.recepcion_dialog_nueva_moto_subtitulo, nombreCliente),
                             style = MaterialTheme.typography.bodySmall,
@@ -1208,7 +1255,7 @@ fun PantallaRecepcionContenido(
                             )
                         }
                         // Captura nativa / galería de foto de la motocicleta con previsualización
-                        if (estadoUi.nuevaMotoFoto != null) {
+                        if (previewFotoUri != null) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1217,7 +1264,7 @@ fun PantallaRecepcionContenido(
                                     .background(MaterialTheme.colorScheme.surfaceVariant)
                             ) {
                                 AsyncImage(
-                                    model = estadoUi.nuevaMotoFoto.localUri,
+                                    model = previewFotoUri,
                                     contentDescription = stringResource(R.string.recepcion_desc_miniatura_moto),
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize()
@@ -1272,7 +1319,12 @@ fun PantallaRecepcionContenido(
                 },
                 confirmButton = {
                     Button(onClick = onGuardarNuevaMoto) {
-                        Text(stringResource(R.string.recepcion_dialog_nueva_moto_guardar))
+                        Text(
+                            stringResource(
+                                if (esEdicion) R.string.recepcion_dialog_editar_moto_guardar
+                                else R.string.recepcion_dialog_nueva_moto_guardar
+                            )
+                        )
                     }
                 },
                 dismissButton = {

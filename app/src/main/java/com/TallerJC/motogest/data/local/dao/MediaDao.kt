@@ -16,6 +16,12 @@ interface MediaDao {
     @Query("SELECT * FROM media_records WHERE motorcycleId = :motorcycleId ORDER BY createdAt DESC")
     fun getMediaByMotorcycleId(motorcycleId: String): Flow<List<MediaEntity>>
 
+    @Query("SELECT * FROM media_records WHERE motorcycleId = :motorcycleId AND tag = :tag")
+    suspend fun getMediaByMotorcycleIdAndTag(motorcycleId: String, tag: String): List<MediaEntity>
+
+    @Query("DELETE FROM media_records WHERE motorcycleId = :motorcycleId AND tag = :tag")
+    suspend fun deleteMediaByMotorcycleIdAndTag(motorcycleId: String, tag: String)
+
     @Query("SELECT * FROM media_records WHERE id = :id")
     suspend fun getMediaById(id: String): MediaEntity?
 

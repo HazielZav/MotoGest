@@ -80,6 +80,14 @@ class EntregasViewModelTest {
             emitCurrent()
         }
 
+        override suspend fun updateMotorcycle(motorcycle: MotorcycleEntity) {
+            val idx = motorcycles.indexOfFirst { it.id == motorcycle.id }
+            if (idx != -1) {
+                motorcycles[idx] = motorcycle
+                emitCurrent()
+            }
+        }
+
         override suspend fun insertWorkItem(item: WorkItemEntity) {}
         override suspend fun insertWorkItems(items: List<WorkItemEntity>) {}
         override suspend fun insertSparePart(part: SparePartEntity) {}

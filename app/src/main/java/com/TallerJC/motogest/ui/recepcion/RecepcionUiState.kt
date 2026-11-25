@@ -37,8 +37,9 @@ data class RecepcionUiState(
     val historialMotoSeleccionada: List<WorkOrderWithDetails> = emptyList(),
     val mostrarModalHistorial: Boolean = false,
 
-    // Diálogo para nueva motocicleta
+    // Diálogo para nueva o edición de motocicleta
     val mostrarDialogoNuevaMoto: Boolean = false,
+    val motoEnEdicion: MotorcycleEntity? = null,
     val nuevaMotoMarca: String = "",
     val nuevaMotoModelo: String = "",
     val nuevaMotoColor: String = "",

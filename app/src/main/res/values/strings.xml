@@ -107,8 +107,11 @@
     <string name="recepcion_dialog_nuevo_cliente_titulo">Registrar Nuevo Cliente</string>
     <string name="recepcion_dialog_nuevo_cliente_guardar">Guardar y Seleccionar</string>
     <string name="recepcion_dialog_nueva_moto_titulo">Registrar Motocicleta</string>
+    <string name="recepcion_dialog_editar_moto_titulo">Editar Motocicleta</string>
     <string name="recepcion_dialog_nueva_moto_subtitulo">Asociada a: %1$s</string>
     <string name="recepcion_dialog_nueva_moto_guardar">Guardar Motocicleta</string>
+    <string name="recepcion_dialog_editar_moto_guardar">Guardar Cambios</string>
+    <string name="recepcion_btn_editar_moto">Editar</string>
     <string name="recepcion_sin_cliente_aviso">Busca un cliente registrado o presiona \'+\' para dar de alta uno nuevo.</string>
     <string name="recepcion_sin_motos_aviso">Este cliente no tiene motocicletas registradas. Presiona \'+\' para dar de alta su moto.</string>
     <string name="recepcion_btn_nueva_moto">+ Nueva Moto</string>

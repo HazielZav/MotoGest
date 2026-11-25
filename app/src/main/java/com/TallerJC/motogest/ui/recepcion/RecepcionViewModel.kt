@@ -238,12 +238,13 @@ class RecepcionViewModel(
         }
     }
 
-    // --- GESTIÓN DE MOTOCICLETAS (SELECCIÓN / ALTA VÍA MODAL) ---
+    // --- GESTIÓN DE MOTOCICLETAS (SELECCIÓN / ALTA / EDICIÓN VÍA MODAL) ---
 
     fun abrirDialogoNuevaMoto() {
         _estadoUi.update {
             it.copy(
                 mostrarDialogoNuevaMoto = true,
+                motoEnEdicion = null,
                 nuevaMotoMarca = "",
                 nuevaMotoModelo = "",
                 nuevaMotoColor = "",
@@ -251,6 +252,25 @@ class RecepcionViewModel(
                 nuevaMotoAnio = "",
                 nuevaMotoVin = "",
                 nuevaMotoFotoUri = "",
+                nuevaMotoFoto = null,
+                errorNuevaMoto = null
+            )
+        }
+    }
+
+    fun abrirDialogoEditarMoto(moto: MotorcycleEntity) {
+        val fotoActualValida = moto.photoUrl.takeIf { it.isNotBlank() && !it.startsWith("local://") }.orEmpty()
+        _estadoUi.update {
+            it.copy(
+                mostrarDialogoNuevaMoto = true,
+                motoEnEdicion = moto,
+                nuevaMotoMarca = moto.brand,
+                nuevaMotoModelo = moto.model,
+                nuevaMotoColor = moto.color,
+                nuevaMotoPlaca = moto.plate ?: "",
+                nuevaMotoAnio = moto.year?.toString() ?: "",
+                nuevaMotoVin = moto.vin ?: "",
+                nuevaMotoFotoUri = fotoActualValida,
                 nuevaMotoFoto = null,
                 errorNuevaMoto = null
             )
@@ -265,6 +285,7 @@ class RecepcionViewModel(
         _estadoUi.update {
             it.copy(
                 mostrarDialogoNuevaMoto = false,
+                motoEnEdicion = null,
                 nuevaMotoFoto = null,
                 nuevaMotoFotoUri = "",
                 errorNuevaMoto = null
@@ -297,49 +318,100 @@ class RecepcionViewModel(
         }
 
         viewModelScope.launch(dispatcher) {
+            val motoEditando = actual.motoEnEdicion
             val fotoMoto = actual.nuevaMotoFoto
             val photoUrlFinal = fotoMoto?.localUri ?: actual.nuevaMotoFotoUri
-            val nuevaMoto = MotorcycleEntity(
-                id = UUID.randomUUID().toString(),
-                clientId = cliente.id,
-                brand = marca,
-                model = modelo,
-                color = color,
-                photoUrl = photoUrlFinal,
-                plate = actual.nuevaMotoPlaca.trim().ifBlank { null },
-                year = actual.nuevaMotoAnio.toIntOrNull(),
-                vin = actual.nuevaMotoVin.trim().ifBlank { null },
-                createdAt = System.currentTimeMillis(),
-                isSynced = false
-            )
-            repository.registrarMoto(nuevaMoto)
-            if (fotoMoto != null) {
-                val ahora = System.currentTimeMillis()
-                mediaRepository?.saveImageMetadata(
-                    MediaEntity(
-                        orderId = null,
-                        motorcycleId = nuevaMoto.id,
-                        localUri = fotoMoto.localUri,
-                        localPath = fotoMoto.localPath,
-                        fileName = fotoMoto.fileName,
-                        mimeType = fotoMoto.mimeType,
-                        fileSizeBytes = fotoMoto.fileSizeBytes,
-                        mediaType = "IMAGE",
-                        tag = MediaTag.MOTO_PROFILE.name,
-                        syncStatus = MediaSyncStatus.PENDING.name,
-                        remoteUrl = null,
-                        createdAt = ahora,
-                        updatedAt = ahora
-                    )
+            val ahora = System.currentTimeMillis()
+
+            val motoGuardada = if (motoEditando != null) {
+                val actualizada = motoEditando.copy(
+                    brand = marca,
+                    model = modelo,
+                    color = color,
+                    photoUrl = photoUrlFinal,
+                    plate = actual.nuevaMotoPlaca.trim().ifBlank { null },
+                    year = actual.nuevaMotoAnio.toIntOrNull(),
+                    vin = actual.nuevaMotoVin.trim().ifBlank { null },
+                    isSynced = false
                 )
+                repository.actualizarMoto(actualizada)
+
+                val seEliminoOReemplazoFoto = fotoMoto != null ||
+                    (actual.nuevaMotoFotoUri.isBlank() && motoEditando.photoUrl.isNotBlank())
+                if (seEliminoOReemplazoFoto) {
+                    mediaRepository?.deleteMotorcycleProfileImages(actualizada.id)
+                }
+                if (fotoMoto != null) {
+                    mediaRepository?.saveImageMetadata(
+                        MediaEntity(
+                            orderId = null,
+                            motorcycleId = actualizada.id,
+                            localUri = fotoMoto.localUri,
+                            localPath = fotoMoto.localPath,
+                            fileName = fotoMoto.fileName,
+                            mimeType = fotoMoto.mimeType,
+                            fileSizeBytes = fotoMoto.fileSizeBytes,
+                            mediaType = "IMAGE",
+                            tag = MediaTag.MOTO_PROFILE.name,
+                            syncStatus = MediaSyncStatus.PENDING.name,
+                            remoteUrl = null,
+                            createdAt = ahora,
+                            updatedAt = ahora
+                        )
+                    )
+                }
+                actualizada
+            } else {
+                val nuevaMoto = MotorcycleEntity(
+                    id = UUID.randomUUID().toString(),
+                    clientId = cliente.id,
+                    brand = marca,
+                    model = modelo,
+                    color = color,
+                    photoUrl = photoUrlFinal,
+                    plate = actual.nuevaMotoPlaca.trim().ifBlank { null },
+                    year = actual.nuevaMotoAnio.toIntOrNull(),
+                    vin = actual.nuevaMotoVin.trim().ifBlank { null },
+                    createdAt = ahora,
+                    isSynced = false
+                )
+                repository.registrarMoto(nuevaMoto)
+                if (fotoMoto != null) {
+                    mediaRepository?.saveImageMetadata(
+                        MediaEntity(
+                            orderId = null,
+                            motorcycleId = nuevaMoto.id,
+                            localUri = fotoMoto.localUri,
+                            localPath = fotoMoto.localPath,
+                            fileName = fotoMoto.fileName,
+                            mimeType = fotoMoto.mimeType,
+                            fileSizeBytes = fotoMoto.fileSizeBytes,
+                            mediaType = "IMAGE",
+                            tag = MediaTag.MOTO_PROFILE.name,
+                            syncStatus = MediaSyncStatus.PENDING.name,
+                            remoteUrl = null,
+                            createdAt = ahora,
+                            updatedAt = ahora
+                        )
+                    )
+                }
+                nuevaMoto
             }
-            seleccionarMoto(nuevaMoto)
+
+            seleccionarMoto(motoGuardada)
             _estadoUi.update {
+                val motosActualizadas = if (motoEditando != null) {
+                    it.motosClienteSeleccionado.map { m -> if (m.id == motoGuardada.id) motoGuardada else m }
+                } else {
+                    it.motosClienteSeleccionado
+                }
                 it.copy(
                     mostrarDialogoNuevaMoto = false,
+                    motoEnEdicion = null,
                     nuevaMotoFoto = null,
                     nuevaMotoFotoUri = "",
-                    errorNuevaMoto = null
+                    errorNuevaMoto = null,
+                    motosClienteSeleccionado = motosActualizadas
                 )
             }
         }

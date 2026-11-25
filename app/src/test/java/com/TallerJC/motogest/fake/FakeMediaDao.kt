@@ -21,6 +21,14 @@ class FakeMediaDao : MediaDao {
     override fun getMediaByMotorcycleId(motorcycleId: String): Flow<List<MediaEntity>> =
         itemsFlow.map { list -> list.filter { it.motorcycleId == motorcycleId }.sortedByDescending { it.createdAt } }
 
+    override suspend fun getMediaByMotorcycleIdAndTag(motorcycleId: String, tag: String): List<MediaEntity> =
+        items.filter { it.motorcycleId == motorcycleId && it.tag == tag }
+
+    override suspend fun deleteMediaByMotorcycleIdAndTag(motorcycleId: String, tag: String) {
+        items.removeAll { it.motorcycleId == motorcycleId && it.tag == tag }
+        emit()
+    }
+
     override suspend fun getMediaById(id: String): MediaEntity? =
         items.firstOrNull { it.id == id }
 

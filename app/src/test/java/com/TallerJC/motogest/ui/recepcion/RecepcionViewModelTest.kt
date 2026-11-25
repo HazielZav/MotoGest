@@ -87,6 +87,14 @@ class RecepcionViewModelTest {
             emitCurrent()
         }
 
+        override suspend fun updateMotorcycle(motorcycle: MotorcycleEntity) {
+            val idx = motorcycles.indexOfFirst { it.id == motorcycle.id }
+            if (idx != -1) {
+                motorcycles[idx] = motorcycle
+                emitCurrent()
+            }
+        }
+
         override suspend fun insertWorkItem(item: WorkItemEntity) {}
         override suspend fun insertWorkItems(items: List<WorkItemEntity>) {}
         override suspend fun insertSparePart(part: SparePartEntity) {}
@@ -523,5 +531,90 @@ class RecepcionViewModelTest {
 
         assertNull(viewModel.estadoUi.value.nuevaMotoFoto)
         assertTrue(deletedFiles.contains(dest.localPath))
+    }
+
+    @Test
+    fun testEditarMotocicletaActualizaDatosYReemplazaFotoSinEliminarOrdenes() = runBlocking {
+        val fakeMediaDao = FakeMediaDao()
+        val deletedFiles = mutableListOf<String>()
+        val fakeStorage = object : LocalImageStorage {
+            private var counter = 0
+            override fun createCameraImageDestination(prefix: String): StoredImageFile {
+                counter++
+                val name = "${prefix}_edit_$counter.jpg"
+                return StoredImageFile(
+                    localUri = "content://com.TallerJC.motogest.fileprovider/motogest_images/$name",
+                    localPath = "/files/images/$name",
+                    fileName = name
+                )
+            }
+            override fun finalizeCameraImage(destination: StoredImageFile) = destination.copy(fileSizeBytes = 1800L)
+            override suspend fun copyPickedImageToInternalStorage(sourceUri: Uri, prefix: String) = null
+            override fun deleteLocalFile(localPath: String): Boolean {
+                deletedFiles.add(localPath)
+                return true
+            }
+        }
+        val mediaRepo = LocalMediaRepository(fakeMediaDao, fakeStorage)
+
+        val cliente = ClientEntity(id = "c_edit", name = "Raúl Pérez", phone = "4452223344")
+        fakeDao.insertClient(cliente)
+
+        val viewModel = RecepcionViewModel(
+            repository = repository,
+            dispatcher = Dispatchers.Unconfined,
+            mediaRepository = mediaRepo,
+            imageStorage = fakeStorage
+        )
+        viewModel.seleccionarCliente(cliente)
+
+        // 1. Registrar moto inicial con foto
+        viewModel.abrirDialogoNuevaMoto()
+        viewModel.actualizarNuevaMotoMarca("Italika")
+        viewModel.actualizarNuevaMotoModelo("FT125")
+        viewModel.actualizarNuevaMotoColor("Rojo")
+        viewModel.actualizarNuevaMotoAnio("2021")
+        val fotoInicial = viewModel.prepararDestinoCamara("moto")!!
+        viewModel.confirmarFotoCamaraMoto(fotoInicial)
+        viewModel.guardarYSeleccionarNuevaMoto()
+
+        val motoOriginal = fakeDao.motorcycles.first()
+        assertEquals(1, fakeMediaDao.items.size)
+
+        // 2. Abrir edición, modificar datos y reemplazar foto
+        viewModel.abrirDialogoEditarMoto(motoOriginal)
+        assertEquals(motoOriginal, viewModel.estadoUi.value.motoEnEdicion)
+        assertEquals("Italika", viewModel.estadoUi.value.nuevaMotoMarca)
+        assertEquals("2021", viewModel.estadoUi.value.nuevaMotoAnio)
+        assertEquals(fotoInicial.localUri, viewModel.estadoUi.value.nuevaMotoFotoUri)
+
+        viewModel.actualizarNuevaMotoMarca("Yamaha")
+        viewModel.actualizarNuevaMotoModelo("FZ-S")
+        viewModel.actualizarNuevaMotoColor("Azul")
+        viewModel.actualizarNuevaMotoAnio("2024")
+        viewModel.actualizarNuevaMotoPlaca("YAM-24")
+        val fotoNueva = viewModel.prepararDestinoCamara("moto")!!
+        viewModel.confirmarFotoCamaraMoto(fotoNueva)
+        viewModel.guardarYSeleccionarNuevaMoto()
+
+        // 3. Verificar actualización preservando el mismo ID y reemplazando foto anterior
+        val motoActualizada = fakeDao.getMotorcycleById(motoOriginal.id)
+        assertNotNull(motoActualizada)
+        assertEquals("Yamaha", motoActualizada?.brand)
+        assertEquals("FZ-S", motoActualizada?.model)
+        assertEquals("Azul", motoActualizada?.color)
+        assertEquals(2024, motoActualizada?.year)
+        assertEquals("YAM-24", motoActualizada?.plate)
+        assertEquals(fotoNueva.localUri, motoActualizada?.photoUrl)
+        assertEquals(motoActualizada, viewModel.estadoUi.value.motoSeleccionada)
+        assertNull(viewModel.estadoUi.value.motoEnEdicion)
+
+        // Se limpió el archivo y registro anterior y quedó solo la nueva foto PENDING
+        assertTrue(deletedFiles.contains(fotoInicial.localPath))
+        val mediaMoto = fakeMediaDao.items.filter { it.motorcycleId == motoOriginal.id }
+        assertEquals(1, mediaMoto.size)
+        assertEquals(fotoNueva.localPath, mediaMoto.first().localPath)
+        assertEquals(MediaSyncStatus.PENDING.name, mediaMoto.first().syncStatus)
+        assertNull(mediaMoto.first().remoteUrl)
     }
 }
