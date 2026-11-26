@@ -2,6 +2,7 @@ package com.TallerJC.motogest.ui.entregas
 
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
+import com.TallerJC.motogest.ui.util.UiText
 
 /**
  * Representa la acción que disparó la confirmación preventiva de costo $0.00
@@ -24,6 +25,6 @@ data class EntregasUiState(
     val accionPendienteCostoCero: AccionCostoCero? = null,
     val mostrarDialogoConfirmarEntrega: Boolean = false,
     val isLoading: Boolean = false,
-    val mensajeError: String? = null,
-    val mensajeExito: String? = null
+    val mensajeError: UiText? = null,
+    val mensajeExito: UiText? = null
 )

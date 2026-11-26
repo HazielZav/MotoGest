@@ -3,10 +3,12 @@ package com.TallerJC.motogest.ui.gerencia
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.TallerJC.motogest.R
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.data.repository.GerenciaRepository
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.ui.util.UiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,7 +47,10 @@ class GerenciaViewModel(
                         _estadoUi.update {
                             it.copy(
                                 isLoading = false,
-                                error = "Error al consultar las órdenes de gerencia: ${ex.message}"
+                                error = UiText.StringResource(
+                                    R.string.gerencia_error_consultar,
+                                    ex.message.orEmpty()
+                                )
                             )
                         }
                     }
@@ -79,7 +84,10 @@ class GerenciaViewModel(
                 _estadoUi.update {
                     it.copy(
                         isLoading = false,
-                        error = "No se pudieron insertar los datos demo: ${ex.message}"
+                        error = UiText.StringResource(
+                            R.string.gerencia_error_datos_demo,
+                            ex.message.orEmpty()
+                        )
                     )
                 }
             }
@@ -212,20 +220,12 @@ class GerenciaViewModel(
         val totalMotos = ordenesPeriodo.size
         val ticketPromedio = if (totalMotos > 0) sumaIngresos / totalMotos else 0.0
 
-        // Distribución Operativa de Servicios
+        // Distribución Operativa de Servicios (etiqueta localizada en UI vía EnumLocalization)
         val distribucion = ServiceType.values().map { tipo ->
             val cantidad = ordenesPeriodo.count { it.order.serviceType == tipo.name }
             val porcentaje = if (totalMotos > 0) cantidad.toFloat() / totalMotos.toFloat() else 0f
-            val nombreLegible = when (tipo) {
-                ServiceType.REPARACION -> "Reparación General"
-                ServiceType.SERVICIO_GENERAL -> "Servicio General / Afinación"
-                ServiceType.AJUSTE_MOTOR -> "Ajuste de Motor"
-                ServiceType.FRENOS -> "Sistema de Frenos"
-                ServiceType.OTRO -> "Otros Servicios"
-            }
             DistribucionServicio(
                 tipo = tipo,
-                nombre = nombreLegible,
                 cantidad = cantidad,
                 porcentaje = porcentaje
             )

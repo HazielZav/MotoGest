@@ -37,8 +37,8 @@ import com.TallerJC.motogest.domain.model.enums.ServiceType
 import com.TallerJC.motogest.ui.components.MotoThumbnail
 import com.TallerJC.motogest.ui.util.SpeechRecognizerHelper
 import com.TallerJC.motogest.ui.util.getLabelRes
+import com.TallerJC.motogest.ui.util.rememberCurrencyFormatter
 import java.text.NumberFormat
-import java.util.Locale
 
 @Composable
 fun PantallaTaller(
@@ -74,7 +74,7 @@ fun PantallaTallerContenido(
     onAgregarRefaccion: (WorkOrderWithDetails, String, String) -> Unit,
     onGuardarRecomendacionesYVin: (WorkOrderWithDetails, String, String) -> Unit
 ) {
-    val formatoMoneda = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-MX")) }
+    val formatoMoneda = rememberCurrencyFormatter()
     var ordenAEntregar by remember { mutableStateOf<WorkOrderWithDetails?>(null) }
 
     Scaffold(
@@ -158,9 +158,13 @@ fun PantallaTallerContenido(
                 title = { Text(stringResource(R.string.taller_dialog_entregar_titulo), fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Folio: ${ordenDetalle.order.folio} • Cliente: ${ordenDetalle.client.name}")
-                        Text("Moto: ${ordenDetalle.motorcycle.brand} ${ordenDetalle.motorcycle.model}")
-                        Text("Total cobrado: ${formatoMoneda.format(totalCobro)}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(R.string.entregas_dialog_folio_cliente, ordenDetalle.order.folio, ordenDetalle.client.name))
+                        Text(stringResource(R.string.label_moto, ordenDetalle.motorcycle.brand, ordenDetalle.motorcycle.model))
+                        Text(
+                            stringResource(R.string.taller_dialog_total_cobrado, formatoMoneda.format(totalCobro)),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                         Spacer(Modifier.height(4.dp))
                         Text(
                             stringResource(R.string.taller_dialog_entregar_nota),
@@ -257,14 +261,14 @@ fun TarjetaOrdenMecanico(
                         Spacer(modifier = Modifier.width(6.dp))
                         Badge(containerColor = MaterialTheme.colorScheme.primary) {
                             Text(
-                                text = "${minutosTranscurridos} min",
+                                text = stringResource(R.string.label_minutos, minutosTranscurridos),
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                     }
                     Text(
-                        text = "${orden.folio} • Cliente: ${cliente.name}",
+                        text = stringResource(R.string.taller_card_folio_cliente, orden.folio, cliente.name),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -275,11 +279,16 @@ fun TarjetaOrdenMecanico(
             val serviceLabel = if (serviceTypeEnum != null) stringResource(serviceTypeEnum.getLabelRes()) else orden.serviceType.replace("_", " ")
 
             Text(
-                text = "Servicio: $serviceLabel | Falla: ${orden.reportedFailure}",
+                text = stringResource(R.string.label_servicio_falla, serviceLabel, orden.reportedFailure),
                 style = MaterialTheme.typography.bodyLarge
             )
             Text(
-                text = "Acumulado: ${formatoMoneda.format(orden.totalAmount)} (M.O: ${formatoMoneda.format(orden.totalLaborCost)} | Piezas: ${formatoMoneda.format(orden.totalPartsCost)})",
+                text = stringResource(
+                    R.string.taller_card_acumulado,
+                    formatoMoneda.format(orden.totalAmount),
+                    formatoMoneda.format(orden.totalLaborCost),
+                    formatoMoneda.format(orden.totalPartsCost)
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
@@ -458,7 +467,7 @@ fun ModalDetalleMecanico(
     }
 
     fun lanzarDictadoRecomendaciones() {
-        val intent = SpeechRecognizerHelper.createSpanishSpeechIntent(
+        val intent = SpeechRecognizerHelper.createSpeechIntent(
             context.getString(R.string.taller_dictado_prompt_recs)
         )
         try {
@@ -547,7 +556,7 @@ fun ModalDetalleMecanico(
                     },
                     modifier = Modifier.size(48.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Agregar Trabajo", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.taller_desc_agregar_trabajo), tint = MaterialTheme.colorScheme.primary)
                 }
             }
 
@@ -585,7 +594,7 @@ fun ModalDetalleMecanico(
                     },
                     modifier = Modifier.size(48.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Agregar Refacción", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.taller_desc_agregar_refaccion), tint = MaterialTheme.colorScheme.primary)
                 }
             }
 

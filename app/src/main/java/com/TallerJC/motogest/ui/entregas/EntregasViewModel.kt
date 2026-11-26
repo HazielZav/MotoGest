@@ -3,10 +3,12 @@ package com.TallerJC.motogest.ui.entregas
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.TallerJC.motogest.R
 import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.data.repository.OperacionesRepository
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
+import com.TallerJC.motogest.ui.util.UiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class EntregasViewModel(
     private val repository: OperacionesRepository,
@@ -43,7 +46,10 @@ class EntregasViewModel(
                     _estadoUi.update {
                         it.copy(
                             isLoading = false,
-                            mensajeError = "Error al consultar las órdenes de entrega: ${ex.message}"
+                            mensajeError = UiText.StringResource(
+                                R.string.entregas_error_consultar,
+                                ex.message.orEmpty()
+                            )
                         )
                     }
                 }
@@ -97,12 +103,20 @@ class EntregasViewModel(
                 repository.cambiarEstadoOrden(ordenDetalle.order, OrderStatus.EN_CAMINO)
                 _estadoUi.update {
                     it.copy(
-                        mensajeExito = "Orden ${ordenDetalle.order.folio} marcada EN CAMINO."
+                        mensajeExito = UiText.StringResource(
+                            R.string.entregas_exito_en_camino,
+                            ordenDetalle.order.folio
+                        )
                     )
                 }
             } catch (ex: Exception) {
                 _estadoUi.update {
-                    it.copy(mensajeError = "No se pudo actualizar a EN CAMINO: ${ex.message}")
+                    it.copy(
+                        mensajeError = UiText.StringResource(
+                            R.string.entregas_error_en_camino,
+                            ex.message.orEmpty()
+                        )
+                    )
                 }
             }
         }
@@ -147,12 +161,21 @@ class EntregasViewModel(
                         mostrarDialogoConfirmarEntrega = false,
                         mostrarAlertaCostoCero = false,
                         accionPendienteCostoCero = null,
-                        mensajeExito = "Orden ${ordenDetalle.order.folio} ENTREGADA. Costo de envío ($${String.format("%.2f", costoEnvioFinal)}) guardado en ficha del cliente."
+                        mensajeExito = UiText.StringResource(
+                            R.string.entregas_exito_entregada,
+                            ordenDetalle.order.folio,
+                            String.format(Locale.US, "%.2f", costoEnvioFinal)
+                        )
                     )
                 }
             } catch (ex: Exception) {
                 _estadoUi.update {
-                    it.copy(mensajeError = "Error al marcar como entregada: ${ex.message}")
+                    it.copy(
+                        mensajeError = UiText.StringResource(
+                            R.string.entregas_error_entregar,
+                            ex.message.orEmpty()
+                        )
+                    )
                 }
             }
         }
@@ -228,12 +251,20 @@ class EntregasViewModel(
                         mostrarAlertaCostoCero = false,
                         accionPendienteCostoCero = null,
                         ordenSeleccionada = null,
-                        mensajeExito = "Costo de envío actualizado a $${String.format("%.2f", costo)}."
+                        mensajeExito = UiText.StringResource(
+                            R.string.entregas_exito_costo_actualizado,
+                            String.format(Locale.US, "%.2f", costo)
+                        )
                     )
                 }
             } catch (ex: Exception) {
                 _estadoUi.update {
-                    it.copy(mensajeError = "No se pudo actualizar el costo de envío: ${ex.message}")
+                    it.copy(
+                        mensajeError = UiText.StringResource(
+                            R.string.entregas_error_costo,
+                            ex.message.orEmpty()
+                        )
+                    )
                 }
             }
         }

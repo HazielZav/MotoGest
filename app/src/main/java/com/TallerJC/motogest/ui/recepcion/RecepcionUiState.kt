@@ -6,6 +6,7 @@ import com.TallerJC.motogest.data.local.model.WorkOrderWithDetails
 import com.TallerJC.motogest.data.local.storage.StoredImageFile
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.ui.util.UiText
 
 enum class CampoDictado {
     FALLA_REPORTADA,
@@ -28,7 +29,7 @@ data class RecepcionUiState(
     val nuevoClienteNombre: String = "",
     val nuevoClienteTelefono: String = "",
     val nuevoClienteDireccion: String = "",
-    val errorNuevoCliente: String? = null,
+    val errorNuevoCliente: UiText? = null,
 
     // --- FORMULARIO NUEVA RECEPCIÓN ---
     // Datos del Cliente (persistidos o activos)
@@ -53,7 +54,7 @@ data class RecepcionUiState(
     val nuevaMotoVin: String = "",
     val nuevaMotoFotoUri: String = "",
     val nuevaMotoFoto: StoredImageFile? = null,
-    val errorNuevaMoto: String? = null,
+    val errorNuevaMoto: UiText? = null,
 
     // Datos de la Moto activa
     val marcaMoto: String = "",
@@ -74,12 +75,9 @@ data class RecepcionUiState(
     val modalidadEntrega: DeliveryType = DeliveryType.TALLER,
 
     val mostrarAlertaSinDomicilio: Boolean = false,
-    val mensajeError: String? = null,
-    val mensajeDictado: String? = null,
+    val mensajeError: UiText? = null,
+    val mensajeDictado: UiText? = null,
     val ordenGuardadaConExito: Boolean = false,
-
-    // Lista de opciones para los chips
-    val opcionesServicio: List<String> = listOf("Servicio", "Frenos", "Ajuste", "Reparación", "Otro"),
 
     // --- MÓDULO DE ENTREGA EN TALLER ---
     val ordenesListasParaEntrega: List<WorkOrderWithDetails> = emptyList(),
@@ -88,9 +86,9 @@ data class RecepcionUiState(
     val filtroModalidadEntrega: DeliveryType? = null,
     val ordenAEntregar: WorkOrderWithDetails? = null,
     val mostrarDialogoConfirmarEntrega: Boolean = false,
-    val mensajeEntregaExitosa: String? = null,
+    val mensajeEntregaExitosa: UiText? = null,
 
     // Sincronización en la nube (Retrofit + Firebase)
     val sincronizandoNube: Boolean = false,
-    val mensajeNube: String? = null
+    val mensajeNube: UiText? = null
 )

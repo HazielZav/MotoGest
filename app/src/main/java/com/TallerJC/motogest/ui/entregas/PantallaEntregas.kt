@@ -32,8 +32,8 @@ import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 import com.TallerJC.motogest.ui.components.MotoThumbnail
 import com.TallerJC.motogest.ui.util.getLabelRes
+import com.TallerJC.motogest.ui.util.rememberCurrencyFormatter
 import java.text.NumberFormat
-import java.util.Locale
 
 @Composable
 fun PantallaEntregas(
@@ -83,7 +83,7 @@ fun PantallaEntregasContenido(
     onLimpiarMensajes: () -> Unit,
     onNavegarEnMaps: () -> Unit
 ) {
-    val formatoMoneda = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-MX")) }
+    val formatoMoneda = rememberCurrencyFormatter()
 
     Scaffold(
         topBar = {
@@ -117,7 +117,7 @@ fun PantallaEntregasContenido(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = error,
+                            text = error.asString(),
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.weight(1f)
                         )
@@ -147,7 +147,7 @@ fun PantallaEntregasContenido(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "✓ $exito",
+                            text = "✓ ${exito.asString()}",
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.weight(1f)

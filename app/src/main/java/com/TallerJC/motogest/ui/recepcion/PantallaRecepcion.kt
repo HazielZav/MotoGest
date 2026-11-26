@@ -48,9 +48,11 @@ import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 import com.TallerJC.motogest.ui.components.MotoThumbnail
 import com.TallerJC.motogest.ui.util.SpeechRecognizerHelper
+import com.TallerJC.motogest.ui.util.UiText
 import com.TallerJC.motogest.ui.util.getLabelRes
+import com.TallerJC.motogest.ui.util.localizedOrderStatus
+import com.TallerJC.motogest.ui.util.rememberCurrencyFormatter
 import java.text.NumberFormat
-import java.util.Locale
 
 private const val DESTINO_FOTO_MOTO = "MOTO"
 private const val DESTINO_FOTO_EVIDENCIA = "EVIDENCIA"
@@ -119,7 +121,7 @@ fun PantallaRecepcion(
             capturaPendienteUri = null
             capturaPendientePath = null
             capturaPendienteNombre = null
-            viewModel.reportarErrorCamara(context.getString(R.string.recepcion_error_sin_camara))
+            viewModel.reportarErrorCamara(UiText.StringResource(R.string.recepcion_error_sin_camara))
         }
     }
 
@@ -149,11 +151,11 @@ fun PantallaRecepcion(
             CampoDictado.FALLA_REPORTADA -> R.string.recepcion_dictado_prompt_falla
             CampoDictado.NOTAS_DANOS -> R.string.recepcion_dictado_prompt_danos
         }
-        val intent = SpeechRecognizerHelper.createSpanishSpeechIntent(context.getString(promptRes))
+        val intent = SpeechRecognizerHelper.createSpeechIntent(context.getString(promptRes))
         try {
             speechLauncher.launch(intent)
         } catch (_: ActivityNotFoundException) {
-            viewModel.reportarErrorDictado(context.getString(R.string.recepcion_dictado_no_disponible))
+            viewModel.reportarErrorDictado(UiText.StringResource(R.string.recepcion_dictado_no_disponible))
         }
     }
 
@@ -283,7 +285,7 @@ fun PantallaRecepcionContenido(
     onConsumirMensajeNube: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
-    val formatoMoneda = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-MX")) }
+    val formatoMoneda = rememberCurrencyFormatter()
 
     Scaffold(
         topBar = {
@@ -406,7 +408,7 @@ fun PantallaRecepcionContenido(
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Icon(Icons.Default.CloudDone, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                    Text(text = msg, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                    Text(text = msg.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                 }
                                 IconButton(onClick = onConsumirMensajeNube, modifier = Modifier.size(28.dp)) {
                                     Icon(Icons.Default.Close, contentDescription = stringResource(R.string.btn_cerrar), modifier = Modifier.size(16.dp))
@@ -437,7 +439,7 @@ fun PantallaRecepcionContenido(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = error,
+                                text = error.asString(),
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                                 modifier = Modifier.padding(12.dp)
                             )
@@ -533,7 +535,7 @@ fun PantallaRecepcionContenido(
                                         ) {
                                             Column {
                                                 Text(cliente.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                                                Text("Tel: ${cliente.phone}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                Text(stringResource(R.string.label_telefono_corto, cliente.phone), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                                 cliente.address?.let {
                                                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                                 }
@@ -745,11 +747,11 @@ fun PantallaRecepcionContenido(
                                                             }
                                                         }
                                                     }
-                                                    Text("Color: ${moto.color}", style = MaterialTheme.typography.bodySmall)
+                                                    Text(stringResource(R.string.label_color, moto.color), style = MaterialTheme.typography.bodySmall)
                                                 }
                                             }
-                                            moto.plate?.let { Text("Placa: $it", style = MaterialTheme.typography.bodySmall) }
-                                            moto.year?.let { Text("Año: $it", style = MaterialTheme.typography.bodySmall) }
+                                            moto.plate?.let { Text(stringResource(R.string.label_placa, it), style = MaterialTheme.typography.bodySmall) }
+                                            moto.year?.let { Text(stringResource(R.string.label_anio, it), style = MaterialTheme.typography.bodySmall) }
                                             Spacer(modifier = Modifier.height(4.dp))
                                             OutlinedButton(
                                                 onClick = { onVerHistorialMoto(moto) },
@@ -797,9 +799,9 @@ fun PantallaRecepcionContenido(
                                             style = MaterialTheme.typography.bodyLarge
                                         )
                                         val extraInfo = listOfNotNull(
-                                            estadoUi.motoSeleccionada.plate?.let { "Placa: $it" },
-                                            estadoUi.motoSeleccionada.year?.let { "Año: $it" },
-                                            estadoUi.motoSeleccionada.vin?.let { "VIN: $it" }
+                                            estadoUi.motoSeleccionada.plate?.let { stringResource(R.string.label_placa, it) },
+                                            estadoUi.motoSeleccionada.year?.let { stringResource(R.string.label_anio, it) },
+                                            estadoUi.motoSeleccionada.vin?.let { stringResource(R.string.label_vin, it) }
                                         ).joinToString(" • ")
                                         if (extraInfo.isNotEmpty()) {
                                             Text(text = extraInfo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -875,7 +877,7 @@ fun PantallaRecepcionContenido(
                                 ) {
                                     Icon(Icons.Default.MicOff, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                                     Text(
-                                        text = aviso,
+                                        text = aviso.asString(),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
@@ -1068,7 +1070,7 @@ fun PantallaRecepcionContenido(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = msg,
+                                    text = msg.asString(),
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier.weight(1f)
@@ -1198,7 +1200,7 @@ fun PantallaRecepcionContenido(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         estadoUi.errorNuevoCliente?.let { err ->
-                            Text(text = err, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            Text(text = err.asString(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                         }
                         OutlinedTextField(
                             value = estadoUi.nuevoClienteNombre,
@@ -1277,7 +1279,7 @@ fun PantallaRecepcionContenido(
                             .verticalScroll(rememberScrollState())
                     ) {
                         estadoUi.errorNuevaMoto?.let { err ->
-                            Text(text = err, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            Text(text = err.asString(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
@@ -1420,12 +1422,12 @@ fun PantallaRecepcionContenido(
                 title = { Text(stringResource(R.string.recepcion_dialog_entregar_titulo), fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Folio: ${orden.folio}")
-                        Text("Cliente: ${estadoUi.ordenAEntregar.client.name}")
-                        Text("Motocicleta: ${estadoUi.ordenAEntregar.motorcycle.brand} ${estadoUi.ordenAEntregar.motorcycle.model}")
+                        Text(stringResource(R.string.label_folio, orden.folio))
+                        Text(stringResource(R.string.label_cliente, estadoUi.ordenAEntregar.client.name))
+                        Text(stringResource(R.string.label_motocicleta, estadoUi.ordenAEntregar.motorcycle.brand, estadoUi.ordenAEntregar.motorcycle.model))
                         HorizontalDivider()
                         Text(
-                            text = "Monto a cobrar en mostrador: ${formatoMoneda.format(totalCobro)}",
+                            text = stringResource(R.string.recepcion_dialog_entregar_monto, formatoMoneda.format(totalCobro)),
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
                             fontSize = 16.sp
@@ -1486,12 +1488,12 @@ fun PantallaRecepcionContenido(
                                             horizontalArrangement = Arrangement.SpaceBetween
                                         ) {
                                             Text(ordenDetalle.order.folio, fontWeight = FontWeight.Bold)
-                                            Badge { Text(ordenDetalle.order.status) }
+                                            Badge { Text(localizedOrderStatus(ordenDetalle.order.status)) }
                                         }
-                                        Text("Falla: ${ordenDetalle.order.reportedFailure}", style = MaterialTheme.typography.bodySmall)
-                                        Text("Total: ${formatoMoneda.format(ordenDetalle.order.totalAmount)}", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                                        Text(stringResource(R.string.label_falla, ordenDetalle.order.reportedFailure), style = MaterialTheme.typography.bodySmall)
+                                        Text(stringResource(R.string.label_total, formatoMoneda.format(ordenDetalle.order.totalAmount)), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
                                         ordenDetalle.order.recommendations?.let {
-                                            Text("Recs: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(stringResource(R.string.label_recs, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
                                 }
@@ -1612,7 +1614,7 @@ fun TarjetaEntregaTaller(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    val placaTxt = moto.plate?.let { " • Placa: $it" } ?: ""
+                    val placaTxt = moto.plate?.let { stringResource(R.string.label_placa_bullet, it) } ?: ""
                     Text(
                         text = "${moto.brand} ${moto.model} (${moto.color})$placaTxt",
                         fontWeight = FontWeight.Bold,
@@ -1632,7 +1634,7 @@ fun TarjetaEntregaTaller(
             val serviceTypeEnum = runCatching { ServiceType.valueOf(orden.serviceType) }.getOrNull()
             val serviceLabel = if (serviceTypeEnum != null) stringResource(serviceTypeEnum.getLabelRes()) else orden.serviceType.replace("_", " ")
             Text(
-                text = "Servicio: $serviceLabel | Motivo: ${orden.reportedFailure}",
+                text = stringResource(R.string.label_servicio_motivo, serviceLabel, orden.reportedFailure),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

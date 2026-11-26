@@ -1,10 +1,13 @@
 package com.TallerJC.motogest.ui.util
 
 import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import com.TallerJC.motogest.R
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
+import com.TallerJC.motogest.domain.model.enums.UserRole
 import com.TallerJC.motogest.ui.gerencia.PeriodoFiltro
 
 @StringRes
@@ -17,6 +20,16 @@ fun OrderStatus.getLabelRes(plural: Boolean = false): Int = when (this) {
     OrderStatus.EN_CAMINO -> R.string.status_en_camino
     OrderStatus.ENTREGADA -> if (plural) R.string.status_entregadas_plural else R.string.status_entregada
     OrderStatus.CANCELADA -> if (plural) R.string.status_canceladas_plural else R.string.status_cancelada
+}
+
+@Composable
+fun localizedOrderStatus(rawStatus: String, plural: Boolean = false): String {
+    val parsed = runCatching { OrderStatus.valueOf(rawStatus) }.getOrNull()
+    return if (parsed != null) {
+        stringResource(parsed.getLabelRes(plural = plural))
+    } else {
+        rawStatus.replace("_", " ")
+    }
 }
 
 @StringRes
@@ -40,4 +53,12 @@ fun PeriodoFiltro.getLabelRes(): Int = when (this) {
     PeriodoFiltro.ESTA_SEMANA -> R.string.period_esta_semana
     PeriodoFiltro.ESTE_MES -> R.string.period_este_mes
     PeriodoFiltro.PERSONALIZADO -> R.string.period_personalizado
+}
+
+@StringRes
+fun UserRole.getLabelRes(): Int = when (this) {
+    UserRole.RECEPCIONISTA -> R.string.role_recepcionista
+    UserRole.MECANICO -> R.string.role_mecanico
+    UserRole.REPARTIDOR -> R.string.role_repartidor
+    UserRole.GERENTE -> R.string.role_gerente
 }

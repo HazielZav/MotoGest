@@ -38,11 +38,13 @@ import com.TallerJC.motogest.domain.model.enums.ServiceType
 import com.TallerJC.motogest.ui.components.MotoThumbnail
 import com.TallerJC.motogest.ui.theme.MotoGestTheme
 import com.TallerJC.motogest.ui.util.getLabelRes
-import java.text.NumberFormat
+import com.TallerJC.motogest.ui.util.localizedOrderStatus
+import com.TallerJC.motogest.ui.util.rememberCurrencyFormatter
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
 
 @Composable
@@ -89,9 +91,14 @@ fun PantallaGerencia(
     onCerrarHistorialMoto: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val currencyFormatter = remember { NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-MX")) }
-    val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm") }
-    val shortDateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
+    val currencyFormatter = rememberCurrencyFormatter()
+    val activeLocale = Locale.getDefault()
+    val dateFormatter = remember(activeLocale) {
+        DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withLocale(activeLocale)
+    }
+    val shortDateFormatter = remember(activeLocale) {
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(activeLocale)
+    }
 
     Scaffold(
         topBar = {
@@ -144,7 +151,7 @@ fun PantallaGerencia(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
-                            text = estadoUi.error,
+                            text = estadoUi.error.asString(),
                             color = MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.Medium
                         )
@@ -432,7 +439,7 @@ fun PantallaGerencia(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     horizontalArrangement = Arrangement.SpaceBetween
                                                 ) {
-                                                    Text(itemServicio.nombre, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                                    Text(stringResource(itemServicio.tipo.getLabelRes()), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                                                     Text("${itemServicio.cantidad} (${(itemServicio.porcentaje * 100).toInt()}%)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                                                 }
                                                 LinearProgressIndicator(
@@ -641,7 +648,7 @@ fun PantallaGerencia(
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 Text(ordenDetalle.order.folio, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                                Badge { Text(ordenDetalle.order.status) }
+                                                Badge { Text(localizedOrderStatus(ordenDetalle.order.status)) }
                                             }
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
@@ -658,12 +665,17 @@ fun PantallaGerencia(
                                                     verticalArrangement = Arrangement.spacedBy(4.dp)
                                                 ) {
                                                     Text(
-                                                        text = "${ordenDetalle.client.name} • Tel: ${ordenDetalle.client.phone}",
+                                                        text = "${ordenDetalle.client.name} • ${stringResource(R.string.label_telefono_corto, ordenDetalle.client.phone)}",
                                                         style = MaterialTheme.typography.bodyMedium,
                                                         fontWeight = FontWeight.SemiBold
                                                     )
                                                     Text(
-                                                        text = "Moto: ${ordenDetalle.motorcycle.brand} ${ordenDetalle.motorcycle.model} (${ordenDetalle.motorcycle.color})",
+                                                        text = stringResource(
+                                                            R.string.label_moto_con_color,
+                                                            ordenDetalle.motorcycle.brand,
+                                                            ordenDetalle.motorcycle.model,
+                                                            ordenDetalle.motorcycle.color
+                                                        ),
                                                         style = MaterialTheme.typography.bodySmall,
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
@@ -675,7 +687,7 @@ fun PantallaGerencia(
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 Text(
-                                                    text = "Cobro: ${currencyFormatter.format(ordenDetalle.order.totalAmount)}",
+                                                    text = stringResource(R.string.label_cobro, currencyFormatter.format(ordenDetalle.order.totalAmount)),
                                                     fontWeight = FontWeight.Bold
                                                 )
                                                 TextButton(onClick = { onVerHistorialMoto(ordenDetalle.motorcycle.id) }) {
@@ -706,8 +718,8 @@ fun PantallaGerencia(
                 title = { Text(stringResource(R.string.gerencia_dialog_detalle_titulo, orden.folio), fontWeight = FontWeight.Bold) },
                 text = {
                     Column(modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Cliente: ${cliente.name}", fontWeight = FontWeight.Bold)
-                        Text("Teléfono: ${cliente.phone} • ${cliente.address ?: stringResource(R.string.entregas_sin_direccion)}")
+                        Text(stringResource(R.string.label_cliente, cliente.name), fontWeight = FontWeight.Bold)
+                        Text("${stringResource(R.string.label_telefono_valor, cliente.phone)} • ${cliente.address ?: stringResource(R.string.entregas_sin_direccion)}")
                         HorizontalDivider()
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -720,15 +732,15 @@ fun PantallaGerencia(
                                 cornerRadius = 8.dp
                             )
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Vehículo: ${moto.brand} ${moto.model} (${moto.color})", fontWeight = FontWeight.Bold)
-                                moto.plate?.let { Text("Placa: $it", style = MaterialTheme.typography.bodySmall) }
-                                moto.vin?.let { Text("VIN: $it", style = MaterialTheme.typography.bodySmall) }
+                                Text(stringResource(R.string.label_vehiculo, moto.brand, moto.model, moto.color), fontWeight = FontWeight.Bold)
+                                moto.plate?.let { Text(stringResource(R.string.label_placa, it), style = MaterialTheme.typography.bodySmall) }
+                                moto.vin?.let { Text(stringResource(R.string.label_vin, it), style = MaterialTheme.typography.bodySmall) }
                             }
                         }
                         HorizontalDivider()
-                        Text("Mano de Obra:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(R.string.gerencia_detalle_mano_obra), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         if (workItems.isEmpty()) {
-                            Text("Total M.O.: ${currencyFormatter.format(orden.totalLaborCost)}", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.gerencia_detalle_total_mo, currencyFormatter.format(orden.totalLaborCost)), style = MaterialTheme.typography.bodySmall)
                         } else {
                             workItems.forEach { item ->
                                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
@@ -737,9 +749,9 @@ fun PantallaGerencia(
                                 }
                             }
                         }
-                        Text("Refacciones:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(R.string.gerencia_detalle_refacciones), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         if (spareParts.isEmpty()) {
-                            Text("Total Refacciones: ${currencyFormatter.format(orden.totalPartsCost)}", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.gerencia_detalle_total_refacciones, currencyFormatter.format(orden.totalPartsCost)), style = MaterialTheme.typography.bodySmall)
                         } else {
                             spareParts.forEach { part ->
                                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
@@ -750,18 +762,18 @@ fun PantallaGerencia(
                         }
                         if (orden.deliveryCost > 0.0) {
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                Text("Envío a Domicilio:", fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.gerencia_detalle_envio), fontWeight = FontWeight.Bold)
                                 Text(currencyFormatter.format(orden.deliveryCost), fontWeight = FontWeight.Bold)
                             }
                         }
                         HorizontalDivider()
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text("TOTAL FACTURADO:", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                            Text(stringResource(R.string.gerencia_detalle_total_facturado), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
                             Text(currencyFormatter.format(orden.totalAmount), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
                         }
                         orden.recommendations?.let {
                             Spacer(Modifier.height(4.dp))
-                            Text("Recomendaciones Mecánicas:", fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.gerencia_detalle_recomendaciones), fontWeight = FontWeight.Bold)
                             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
@@ -787,7 +799,7 @@ fun PantallaGerencia(
             AlertDialog(
                 onDismissRequest = onCerrarHistorialMoto,
                 icon = { Icon(Icons.Default.History, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp)) },
-                title = { Text("Historial de la Unidad", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.gerencia_dialog_historial_unidad), fontWeight = FontWeight.Bold) },
                 text = {
                     Column(modifier = Modifier.fillMaxWidth().heightIn(max = 380.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (estadoUi.historialMotoSeleccionada.isEmpty()) {
@@ -801,12 +813,12 @@ fun PantallaGerencia(
                                     Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                                             Text(detalle.order.folio, fontWeight = FontWeight.Bold)
-                                            Badge { Text(detalle.order.status) }
+                                            Badge { Text(localizedOrderStatus(detalle.order.status)) }
                                         }
-                                        Text("Motivo: ${detalle.order.reportedFailure}", style = MaterialTheme.typography.bodySmall)
-                                        Text("Total: ${currencyFormatter.format(detalle.order.totalAmount)}", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                                        Text(stringResource(R.string.label_motivo, detalle.order.reportedFailure), style = MaterialTheme.typography.bodySmall)
+                                        Text(stringResource(R.string.label_total, currencyFormatter.format(detalle.order.totalAmount)), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
                                         detalle.order.recommendations?.let {
-                                            Text("Recs: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(stringResource(R.string.label_recs, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
                                 }
