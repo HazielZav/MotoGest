@@ -13,6 +13,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -47,6 +50,9 @@ import com.TallerJC.motogest.data.local.storage.StoredImageFile
 import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 import com.TallerJC.motogest.ui.components.MotoThumbnail
+import com.TallerJC.motogest.ui.util.AdaptiveFormContainer
+import com.TallerJC.motogest.ui.util.LocalAdaptiveState
+import com.TallerJC.motogest.ui.util.MotoGestTopBar
 import com.TallerJC.motogest.ui.util.SpeechRecognizerHelper
 import com.TallerJC.motogest.ui.util.UiText
 import com.TallerJC.motogest.ui.util.getLabelRes
@@ -286,27 +292,26 @@ fun PantallaRecepcionContenido(
 ) {
     val scrollState = rememberScrollState()
     val formatoMoneda = rememberCurrencyFormatter()
+    val adaptive = LocalAdaptiveState.current
+    var solicitudScrollSuperior by remember { mutableIntStateOf(0) }
+
+    // Al abrir una orden (éxito o error de validación), desplazamos suavemente al inicio
+    // para que el banner de confirmación o error sea inmediatamente visible.
+    LaunchedEffect(solicitudScrollSuperior, estadoUi.ordenGuardadaConExito, estadoUi.mensajeError) {
+        if (solicitudScrollSuperior > 0 || estadoUi.ordenGuardadaConExito || estadoUi.mensajeError != null) {
+            scrollState.animateScrollTo(0)
+        }
+    }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.recepcion_titulo),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
-                        )
-                        Text(
-                            text = if (estadoUi.pestanaSeleccionada == 0)
-                                stringResource(R.string.recepcion_subtitulo)
-                            else
-                                stringResource(R.string.recepcion_entrega_subtitulo),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
+            MotoGestTopBar(
+                title = stringResource(R.string.recepcion_titulo),
+                subtitle = if (estadoUi.pestanaSeleccionada == 0)
+                    stringResource(R.string.recepcion_subtitulo)
+                else
+                    stringResource(R.string.recepcion_entrega_subtitulo),
                 actions = {
                     IconButton(
                         onClick = onSincronizarNube,
@@ -326,10 +331,7 @@ fun PantallaRecepcionContenido(
                             )
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+                }
             )
         }
     ) { paddingValues ->
@@ -341,54 +343,98 @@ fun PantallaRecepcionContenido(
             // PESTAÑAS: 0 = Nueva Recepción, 1 = Entrega en Mostrador / Taller
             PrimaryTabRow(
                 selectedTabIndex = estadoUi.pestanaSeleccionada,
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.primary,
+                divider = {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Tab(
-                    selected = estadoUi.pestanaSeleccionada == 0,
-                    onClick = { onPestanaCambio(0) },
-                    text = {
-                        Text(stringResource(R.string.recepcion_tab_nueva), fontWeight = FontWeight.Bold)
-                    },
-                    icon = {
-                        Icon(Icons.Default.AddCircleOutline, contentDescription = null)
-                    }
-                )
-                Tab(
-                    selected = estadoUi.pestanaSeleccionada == 1,
-                    onClick = { onPestanaCambio(1) },
-                    text = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(stringResource(R.string.recepcion_tab_entrega), fontWeight = FontWeight.Bold)
-                            if (estadoUi.ordenesListasParaEntrega.isNotEmpty()) {
-                                Badge(containerColor = MaterialTheme.colorScheme.primary) {
-                                    Text(
-                                        text = "${estadoUi.ordenesListasParaEntrega.size}",
-                                        color = MaterialTheme.colorScheme.onPrimary
-                                    )
+                if (adaptive.isCompactHeight) {
+                    Tab(
+                        selected = estadoUi.pestanaSeleccionada == 0,
+                        onClick = { onPestanaCambio(0) },
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.height(40.dp),
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(Icons.Default.AddCircleOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Text(stringResource(R.string.recepcion_tab_nueva), fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    )
+                    Tab(
+                        selected = estadoUi.pestanaSeleccionada == 1,
+                        onClick = { onPestanaCambio(1) },
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.height(40.dp),
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Text(stringResource(R.string.recepcion_tab_entrega), fontWeight = FontWeight.Bold)
+                                if (estadoUi.ordenesListasParaEntrega.isNotEmpty()) {
+                                    Badge(containerColor = MaterialTheme.colorScheme.primary) {
+                                        Text(
+                                            text = "${estadoUi.ordenesListasParaEntrega.size}",
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    }
                                 }
                             }
                         }
-                    },
-                    icon = {
-                        Icon(Icons.Default.TaskAlt, contentDescription = null)
-                    }
-                )
+                    )
+                } else {
+                    Tab(
+                        selected = estadoUi.pestanaSeleccionada == 0,
+                        onClick = { onPestanaCambio(0) },
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = {
+                            Text(stringResource(R.string.recepcion_tab_nueva), fontWeight = FontWeight.Bold)
+                        },
+                        icon = {
+                            Icon(Icons.Default.AddCircleOutline, contentDescription = null)
+                        }
+                    )
+                    Tab(
+                        selected = estadoUi.pestanaSeleccionada == 1,
+                        onClick = { onPestanaCambio(1) },
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(stringResource(R.string.recepcion_tab_entrega), fontWeight = FontWeight.Bold)
+                                if (estadoUi.ordenesListasParaEntrega.isNotEmpty()) {
+                                    Badge(containerColor = MaterialTheme.colorScheme.primary) {
+                                        Text(
+                                            text = "${estadoUi.ordenesListasParaEntrega.size}",
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        icon = {
+                            Icon(Icons.Default.TaskAlt, contentDescription = null)
+                        }
+                    )
+                }
             }
 
             if (estadoUi.pestanaSeleccionada == 0) {
                 // --- PESTAÑA 0: FORMULARIO DE NUEVA RECEPCIÓN ---
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp)
-                        .verticalScroll(scrollState),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    Spacer(modifier = Modifier.height(8.dp))
-
+                val seccionClienteYMoto: @Composable ColumnScope.() -> Unit = {
                     // Feedback de sincronización en la nube
                     estadoUi.mensajeNube?.let { msg ->
                         Card(
@@ -830,8 +876,9 @@ fun PantallaRecepcionContenido(
                         }
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                }
 
+                val seccionOrdenServicio: @Composable ColumnScope.() -> Unit = {
                     // ==========================================
                     // 3. SECCIÓN ORDEN DE SERVICIO
                     // ==========================================
@@ -1027,7 +1074,10 @@ fun PantallaRecepcionContenido(
 
                     // Botón Principal para guardar la orden
                     Button(
-                        onClick = onGuardarClic,
+                        onClick = {
+                            onGuardarClic()
+                            solicitudScrollSuperior++
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
@@ -1044,6 +1094,61 @@ fun PantallaRecepcionContenido(
                     }
 
                     Spacer(modifier = Modifier.height(30.dp))
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    when {
+                        adaptive.isExpanded -> {
+                            AdaptiveFormContainer(maxWidth = 1040.dp) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                                    ) {
+                                        seccionClienteYMoto()
+                                    }
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                                    ) {
+                                        seccionOrdenServicio()
+                                    }
+                                }
+                            }
+                        }
+                        adaptive.isMedium -> {
+                            AdaptiveFormContainer(maxWidth = 680.dp) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    seccionClienteYMoto()
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                                    seccionOrdenServicio()
+                                }
+                            }
+                        }
+                        else -> {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                seccionClienteYMoto()
+                                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                                seccionOrdenServicio()
+                            }
+                        }
+                    }
                 }
             } else {
                 // --- PESTAÑA 1: MÓDULO DE ENTREGA EN TALLER ---
@@ -1095,7 +1200,11 @@ fun PantallaRecepcionContenido(
                                 }
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = if (adaptive.isDualPane) {
+                            Modifier.fillMaxWidth().widthIn(max = 640.dp)
+                        } else {
+                            Modifier.fillMaxWidth()
+                        },
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -1163,6 +1272,21 @@ fun PantallaRecepcionContenido(
                                     text = stringResource(R.string.recepcion_vacio_subtitulo),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else if (adaptive.isDualPane) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = 340.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(bottom = 24.dp)
+                        ) {
+                            gridItems(estadoUi.ordenesFiltradasEntrega, key = { it.order.id }) { ordenDetalle ->
+                                TarjetaEntregaTaller(
+                                    ordenDetalle = ordenDetalle,
+                                    formatoMoneda = formatoMoneda,
+                                    onEntregarClic = { onSolicitarEntrega(ordenDetalle) }
                                 )
                             }
                         }

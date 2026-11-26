@@ -7,6 +7,7 @@
     <string name="nav_taller">Workshop</string>
     <string name="nav_entregas">Deliveries</string>
     <string name="nav_gerencia">Management</string>
+    <string name="nav_drawer_subtitulo">Shop Management</string>
 
     <!-- Work Order Statuses (OrderStatus) -->
     <string name="status_recibida">Pending</string>
@@ -286,4 +287,13 @@
     <string name="gerencia_directorio_vacio">No customers or motorcycles registered yet.</string>
     <string name="gerencia_error_consultar">Error loading management orders: %1$s</string>
     <string name="gerencia_error_datos_demo">Could not insert sample data: %1$s</string>
+
+    <!-- Adaptive Layout (List-Detail) -->
+    <string name="taller_panel_detalle_vacio_titulo">Service Sheet</string>
+    <string name="taller_panel_detalle_vacio_subtitulo">Select a motorcycle from the list to log labor, spare parts, VIN, and technical notes.</string>
+    <string name="entregas_panel_detalle_vacio_titulo">Delivery Details</string>
+    <string name="entregas_panel_detalle_vacio_subtitulo">Select an order from the list to inspect the address, edit the delivery fee, or confirm handover.</string>
+    <string name="entregas_detalle_titulo">Delivery Details</string>
+    <string name="gerencia_panel_detalle_vacio_titulo">Work Order Details</string>
+    <string name="gerencia_panel_detalle_vacio_subtitulo">Select an order to view its full financial breakdown and vehicle service history.</string>
 </resources>
