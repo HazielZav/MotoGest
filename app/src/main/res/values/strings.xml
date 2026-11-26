@@ -7,6 +7,7 @@
     <string name="nav_taller">Taller</string>
     <string name="nav_entregas">Entregas</string>
     <string name="nav_gerencia">Gerencia</string>
+    <string name="nav_drawer_subtitulo">Gestión de Taller</string>
 
     <!-- Estados de Órdenes (OrderStatus) -->
     <string name="status_recibida">Pendiente</string>
@@ -286,4 +287,13 @@
     <string name="gerencia_directorio_vacio">No hay clientes ni motocicletas registradas aún.</string>
     <string name="gerencia_error_consultar">Error al consultar las órdenes de gerencia: %1$s</string>
     <string name="gerencia_error_datos_demo">No se pudieron insertar los datos demo: %1$s</string>
+
+    <!-- Diseño Adaptativo (List-Detail) -->
+    <string name="taller_panel_detalle_vacio_titulo">Hoja de Servicio</string>
+    <string name="taller_panel_detalle_vacio_subtitulo">Selecciona una motocicleta de la lista para capturar mano de obra, refacciones, VIN y recomendaciones.</string>
+    <string name="entregas_panel_detalle_vacio_titulo">Detalle de Entrega</string>
+    <string name="entregas_panel_detalle_vacio_subtitulo">Selecciona un pedido de la lista para ver la dirección, ajustar el costo de envío o confirmar la entrega.</string>
+    <string name="entregas_detalle_titulo">Detalle de Entrega</string>
+    <string name="gerencia_panel_detalle_vacio_titulo">Detalle de la Orden</string>
+    <string name="gerencia_panel_detalle_vacio_subtitulo">Selecciona una orden para consultar su desglose financiero e historial completo de la unidad.</string>
 </resources>

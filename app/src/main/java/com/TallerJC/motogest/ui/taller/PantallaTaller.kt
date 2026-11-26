@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.res.Configuration
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -35,6 +36,9 @@ import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 import com.TallerJC.motogest.ui.components.MotoThumbnail
+import com.TallerJC.motogest.ui.util.AdaptiveEmptyDetailPane
+import com.TallerJC.motogest.ui.util.LocalAdaptiveState
+import com.TallerJC.motogest.ui.util.MotoGestTopBar
 import com.TallerJC.motogest.ui.util.SpeechRecognizerHelper
 import com.TallerJC.motogest.ui.util.getLabelRes
 import com.TallerJC.motogest.ui.util.rememberCurrencyFormatter
@@ -75,71 +79,129 @@ fun PantallaTallerContenido(
     onGuardarRecomendacionesYVin: (WorkOrderWithDetails, String, String) -> Unit
 ) {
     val formatoMoneda = rememberCurrencyFormatter()
+    val adaptive = LocalAdaptiveState.current
     var ordenAEntregar by remember { mutableStateOf<WorkOrderWithDetails?>(null) }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.taller_titulo), fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+            MotoGestTopBar(
+                title = stringResource(R.string.taller_titulo),
+                showBottomDivider = true
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp)
-        ) {
-            // FILTROS DE ESTADO DEL TALLER
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(vertical = 8.dp)
-            ) {
-                items(estadosDisponibles) { estado ->
-                    FilterChip(
-                        selected = estadoUi.filtroEstadoSeleccionado == estado,
-                        onClick = { onFiltroCambio(estado) },
-                        label = { Text(stringResource(estado.getLabelRes(plural = true))) },
-                        modifier = Modifier.height(48.dp)
-                    )
+        val listaPanel: @Composable (Modifier) -> Unit = { panelModifier ->
+            Column(modifier = panelModifier) {
+                // FILTROS DE ESTADO DEL TALLER
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(vertical = if (adaptive.isCompactHeight) 4.dp else 8.dp)
+                ) {
+                    items(estadosDisponibles) { estado ->
+                        FilterChip(
+                            selected = estadoUi.filtroEstadoSeleccionado == estado,
+                            onClick = { onFiltroCambio(estado) },
+                            label = { Text(stringResource(estado.getLabelRes(plural = true))) },
+                            modifier = Modifier.height(if (adaptive.isCompactHeight) 36.dp else 48.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(if (adaptive.isCompactHeight) 4.dp else 8.dp))
+
+                // LISTA REACTIVA DE MOTOCICLETAS
+                if (estadoUi.ordenesFiltradas.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        val estadoNombre = stringResource(estadoUi.filtroEstadoSeleccionado.getLabelRes(plural = true))
+                        Text(
+                            text = stringResource(R.string.taller_vacio_estado, estadoNombre),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = 24.dp)
+                    ) {
+                        items(
+                            items = estadoUi.ordenesFiltradas,
+                            key = { it.order.id }
+                        ) { ordenDetalle ->
+                            TarjetaOrdenMecanico(
+                                ordenDetalle = ordenDetalle,
+                                formatoMoneda = formatoMoneda,
+                                isSelected = adaptive.isDualPane && estadoUi.ordenSeleccionadaDetalle?.order?.id == ordenDetalle.order.id,
+                                onCambiarEstado = { nuevoEstado ->
+                                    onCambiarEstadoOrden(ordenDetalle, nuevoEstado)
+                                },
+                                onEntregarEnTaller = { ordenAEntregar = ordenDetalle },
+                                onAbrirDetalle = { onAbrirDetalleOrden(ordenDetalle) }
+                            )
+                        }
+                    }
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // LISTA REACTIVA DE MOTOCICLETAS
-            if (estadoUi.ordenesFiltradas.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    val estadoNombre = stringResource(estadoUi.filtroEstadoSeleccionado.getLabelRes(plural = true))
-                    Text(
-                        text = stringResource(R.string.taller_vacio_estado, estadoNombre),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 24.dp)
+        if (adaptive.isDualPane) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                listaPanel(Modifier.weight(0.48f).fillMaxHeight())
+                VerticalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                Box(
+                    modifier = Modifier
+                        .weight(0.52f)
+                        .fillMaxHeight()
+                        .padding(vertical = 8.dp)
                 ) {
-                    items(
-                        items = estadoUi.ordenesFiltradas,
-                        key = { it.order.id }
-                    ) { ordenDetalle ->
-                        TarjetaOrdenMecanico(
-                            ordenDetalle = ordenDetalle,
-                            formatoMoneda = formatoMoneda,
-                            onCambiarEstado = { nuevoEstado ->
-                                onCambiarEstadoOrden(ordenDetalle, nuevoEstado)
-                            },
-                            onEntregarEnTaller = { ordenAEntregar = ordenDetalle },
-                            onAbrirDetalle = { onAbrirDetalleOrden(ordenDetalle) }
+                    val ordenSeleccionada = estadoUi.ordenSeleccionadaDetalle
+                    if (ordenSeleccionada != null) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surface,
+                            shape = RoundedCornerShape(16.dp),
+                            tonalElevation = 1.dp,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            ContenidoHojaTaller(
+                                ordenDetalle = ordenSeleccionada,
+                                formatoMoneda = formatoMoneda,
+                                onCerrar = onCerrarDetalleOrden,
+                                onAgregarManoObra = { concepto, costo ->
+                                    onAgregarManoDeObra(ordenSeleccionada, concepto, costo)
+                                },
+                                onAgregarRefaccion = { pieza, costo ->
+                                    onAgregarRefaccion(ordenSeleccionada, pieza, costo)
+                                },
+                                onGuardarCambios = { recomendaciones, vin ->
+                                    onGuardarRecomendacionesYVin(ordenSeleccionada, recomendaciones, vin)
+                                },
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp)
+                            )
+                        }
+                    } else {
+                        AdaptiveEmptyDetailPane(
+                            icon = Icons.Default.Build,
+                            title = stringResource(R.string.taller_panel_detalle_vacio_titulo),
+                            subtitle = stringResource(R.string.taller_panel_detalle_vacio_subtitulo)
                         )
                     }
                 }
             }
+        } else {
+            listaPanel(
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp)
+            )
         }
 
         // CONFIRMACIÓN DE ENTREGA EN TALLER
@@ -189,22 +251,24 @@ fun PantallaTallerContenido(
             )
         }
 
-        // MODAL DE TRABAJO MECÁNICO, REFACCIONES Y VIN
-        estadoUi.ordenSeleccionadaDetalle?.let { ordenSeleccionada ->
-            ModalDetalleMecanico(
-                ordenDetalle = ordenSeleccionada,
-                formatoMoneda = formatoMoneda,
-                onDismiss = onCerrarDetalleOrden,
-                onAgregarManoObra = { concepto, costo ->
-                    onAgregarManoDeObra(ordenSeleccionada, concepto, costo)
-                },
-                onAgregarRefaccion = { pieza, costo ->
-                    onAgregarRefaccion(ordenSeleccionada, pieza, costo)
-                },
-                onGuardarCambios = { recomendaciones, vin ->
-                    onGuardarRecomendacionesYVin(ordenSeleccionada, recomendaciones, vin)
-                }
-            )
+        // MODAL DE TRABAJO MECÁNICO, REFACCIONES Y VIN (solo en modo Compact; en Medium/Expanded se muestra en panel derecho)
+        if (!adaptive.isDualPane) {
+            estadoUi.ordenSeleccionadaDetalle?.let { ordenSeleccionada ->
+                ModalDetalleMecanico(
+                    ordenDetalle = ordenSeleccionada,
+                    formatoMoneda = formatoMoneda,
+                    onDismiss = onCerrarDetalleOrden,
+                    onAgregarManoObra = { concepto, costo ->
+                        onAgregarManoDeObra(ordenSeleccionada, concepto, costo)
+                    },
+                    onAgregarRefaccion = { pieza, costo ->
+                        onAgregarRefaccion(ordenSeleccionada, pieza, costo)
+                    },
+                    onGuardarCambios = { recomendaciones, vin ->
+                        onGuardarRecomendacionesYVin(ordenSeleccionada, recomendaciones, vin)
+                    }
+                )
+            }
         }
     }
 }
@@ -213,6 +277,7 @@ fun PantallaTallerContenido(
 fun TarjetaOrdenMecanico(
     ordenDetalle: WorkOrderWithDetails,
     formatoMoneda: NumberFormat,
+    isSelected: Boolean = false,
     onCambiarEstado: (OrderStatus) -> Unit,
     onEntregarEnTaller: () -> Unit,
     onAbrirDetalle: () -> Unit
@@ -227,6 +292,7 @@ fun TarjetaOrdenMecanico(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
@@ -443,6 +509,34 @@ fun ModalDetalleMecanico(
     onAgregarRefaccion: (String, String) -> Unit,
     onGuardarCambios: (String, String) -> Unit
 ) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        ContenidoHojaTaller(
+            ordenDetalle = ordenDetalle,
+            formatoMoneda = formatoMoneda,
+            onCerrar = null,
+            onAgregarManoObra = onAgregarManoObra,
+            onAgregarRefaccion = onAgregarRefaccion,
+            onGuardarCambios = onGuardarCambios,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        )
+    }
+}
+
+@Composable
+fun ContenidoHojaTaller(
+    ordenDetalle: WorkOrderWithDetails,
+    formatoMoneda: NumberFormat,
+    onCerrar: (() -> Unit)?,
+    onAgregarManoObra: (String, String) -> Unit,
+    onAgregarRefaccion: (String, String) -> Unit,
+    onGuardarCambios: (String, String) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
     var conceptoTrabajo by rememberSaveable(ordenDetalle.order.id) { mutableStateOf("") }
     var costoTrabajo by rememberSaveable(ordenDetalle.order.id) { mutableStateOf("") }
@@ -477,41 +571,39 @@ fun ModalDetalleMecanico(
         }
     }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface
+    Column(
+        modifier = modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                MotoThumbnail(
-                    photoUrl = ordenDetalle.motorcycle.photoUrl,
-                    size = 52.dp,
-                    cornerRadius = 10.dp
+            MotoThumbnail(
+                photoUrl = ordenDetalle.motorcycle.photoUrl,
+                size = 52.dp,
+                cornerRadius = 10.dp
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.taller_modal_titulo, ordenDetalle.motorcycle.brand, ordenDetalle.motorcycle.model),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
                 )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.taller_modal_titulo, ordenDetalle.motorcycle.brand, ordenDetalle.motorcycle.model),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "${ordenDetalle.order.folio} • ${ordenDetalle.motorcycle.color}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Text(
+                    text = "${ordenDetalle.order.folio} • ${ordenDetalle.motorcycle.color}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (onCerrar != null) {
+                IconButton(onClick = onCerrar) {
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.btn_cerrar))
                 }
             }
+        }
 
             // EDICIÓN RÁPIDA DE VIN
             OutlinedTextField(
@@ -679,7 +771,6 @@ fun ModalDetalleMecanico(
                 Text(stringResource(R.string.taller_modal_btn_guardar), fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(24.dp))
-        }
     }
 }
 

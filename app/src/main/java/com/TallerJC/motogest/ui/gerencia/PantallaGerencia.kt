@@ -2,6 +2,7 @@ package com.TallerJC.motogest.ui.gerencia
 
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -37,9 +38,13 @@ import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 import com.TallerJC.motogest.ui.components.MotoThumbnail
 import com.TallerJC.motogest.ui.theme.MotoGestTheme
+import com.TallerJC.motogest.ui.util.AdaptiveEmptyDetailPane
+import com.TallerJC.motogest.ui.util.LocalAdaptiveState
+import com.TallerJC.motogest.ui.util.MotoGestTopBar
 import com.TallerJC.motogest.ui.util.getLabelRes
 import com.TallerJC.motogest.ui.util.localizedOrderStatus
 import com.TallerJC.motogest.ui.util.rememberCurrencyFormatter
+import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -92,6 +97,7 @@ fun PantallaGerencia(
     modifier: Modifier = Modifier
 ) {
     val currencyFormatter = rememberCurrencyFormatter()
+    val adaptive = LocalAdaptiveState.current
     val activeLocale = Locale.getDefault()
     val dateFormatter = remember(activeLocale) {
         DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withLocale(activeLocale)
@@ -101,25 +107,11 @@ fun PantallaGerencia(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.gerencia_titulo),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
-                        )
-                        Text(
-                            text = stringResource(R.string.gerencia_subtitulo),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+            MotoGestTopBar(
+                title = stringResource(R.string.gerencia_titulo),
+                subtitle = stringResource(R.string.gerencia_subtitulo)
             )
         },
         modifier = modifier
@@ -170,33 +162,71 @@ fun PantallaGerencia(
                 // PESTAÑAS: 0 = Métricas y Finanzas, 1 = Directorio e Historial
                 PrimaryTabRow(
                     selectedTabIndex = estadoUi.pestanaSeleccionada,
+                    containerColor = MaterialTheme.colorScheme.background,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    divider = {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                    },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Tab(
-                        selected = estadoUi.pestanaSeleccionada == 0,
-                        onClick = { onPestanaCambio(0) },
-                        text = { Text(stringResource(R.string.gerencia_tab_metricas), fontWeight = FontWeight.Bold) },
-                        icon = { Icon(Icons.Default.MonetizationOn, contentDescription = null) }
-                    )
-                    Tab(
-                        selected = estadoUi.pestanaSeleccionada == 1,
-                        onClick = { onPestanaCambio(1) },
-                        text = { Text(stringResource(R.string.gerencia_tab_directorio), fontWeight = FontWeight.Bold) },
-                        icon = { Icon(Icons.Default.TwoWheeler, contentDescription = null) }
-                    )
+                    if (adaptive.isCompactHeight) {
+                        Tab(
+                            selected = estadoUi.pestanaSeleccionada == 0,
+                            onClick = { onPestanaCambio(0) },
+                            selectedContentColor = MaterialTheme.colorScheme.primary,
+                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.height(40.dp),
+                            text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(Icons.Default.MonetizationOn, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Text(stringResource(R.string.gerencia_tab_metricas), fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        )
+                        Tab(
+                            selected = estadoUi.pestanaSeleccionada == 1,
+                            onClick = { onPestanaCambio(1) },
+                            selectedContentColor = MaterialTheme.colorScheme.primary,
+                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.height(40.dp),
+                            text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(Icons.Default.TwoWheeler, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Text(stringResource(R.string.gerencia_tab_directorio), fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        )
+                    } else {
+                        Tab(
+                            selected = estadoUi.pestanaSeleccionada == 0,
+                            onClick = { onPestanaCambio(0) },
+                            selectedContentColor = MaterialTheme.colorScheme.primary,
+                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            text = { Text(stringResource(R.string.gerencia_tab_metricas), fontWeight = FontWeight.Bold) },
+                            icon = { Icon(Icons.Default.MonetizationOn, contentDescription = null) }
+                        )
+                        Tab(
+                            selected = estadoUi.pestanaSeleccionada == 1,
+                            onClick = { onPestanaCambio(1) },
+                            selectedContentColor = MaterialTheme.colorScheme.primary,
+                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            text = { Text(stringResource(R.string.gerencia_tab_directorio), fontWeight = FontWeight.Bold) },
+                            icon = { Icon(Icons.Default.TwoWheeler, contentDescription = null) }
+                        )
+                    }
                 }
 
                 if (estadoUi.pestanaSeleccionada == 0) {
                     // TAB 0: MÉTRICAS Y FINANZAS
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(vertical = 16.dp)
-                    ) {
+                    val bloqueMetricas: @Composable () -> Unit = {
                         // FILTROS TEMPORALES
-                        item {
+                        Column {
                             Text(
                                 text = stringResource(R.string.gerencia_periodo_titulo),
                                 color = MaterialTheme.colorScheme.primary,
@@ -222,7 +252,7 @@ fun PantallaGerencia(
                                                 )
                                             }
                                         } else null,
-                                        modifier = Modifier.height(48.dp),
+                                        modifier = Modifier.height(if (adaptive.isCompactHeight) 36.dp else 48.dp),
                                         colors = FilterChipDefaults.filterChipColors(
                                             selectedContainerColor = MaterialTheme.colorScheme.primary,
                                             selectedLabelColor = MaterialTheme.colorScheme.onPrimary
@@ -254,51 +284,49 @@ fun PantallaGerencia(
                         }
 
                         // UTILIDAD NETA (EXCLUIR REFACCIONES)
-                        item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                ),
-                                shape = RoundedCornerShape(12.dp)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-                                        Text(
-                                            text = stringResource(R.string.gerencia_toggle_excluir_refacciones),
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 15.sp,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Text(
-                                            text = if (estadoUi.excluirRefacciones)
-                                                stringResource(R.string.gerencia_toggle_desc_ganancia_real)
-                                            else
-                                                stringResource(R.string.gerencia_toggle_desc_ingreso_bruto),
-                                            fontSize = 12.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    Switch(
-                                        checked = estadoUi.excluirRefacciones,
-                                        onCheckedChange = { onExcluirRefaccionesToggle() },
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                                            checkedTrackColor = MaterialTheme.colorScheme.primary
-                                        )
+                                Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                                    Text(
+                                        text = stringResource(R.string.gerencia_toggle_excluir_refacciones),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = if (estadoUi.excluirRefacciones)
+                                            stringResource(R.string.gerencia_toggle_desc_ganancia_real)
+                                        else
+                                            stringResource(R.string.gerencia_toggle_desc_ingreso_bruto),
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
+                                Switch(
+                                    checked = estadoUi.excluirRefacciones,
+                                    onCheckedChange = { onExcluirRefaccionesToggle() },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                        checkedTrackColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
                             }
                         }
 
                         // TARJETAS DE RESUMEN FINANCIERO
-                        item {
+                        Column {
                             Text(
                                 text = stringResource(R.string.gerencia_metricas_titulo),
                                 color = MaterialTheme.colorScheme.primary,
@@ -401,7 +429,7 @@ fun PantallaGerencia(
                         }
 
                         // DISTRIBUCIÓN OPERATIVA DE SERVICIOS
-                        item {
+                        Column {
                             Text(
                                 text = stringResource(R.string.gerencia_distribucion_titulo),
                                 color = MaterialTheme.colorScheme.primary,
@@ -454,244 +482,354 @@ fun PantallaGerencia(
                                 }
                             }
                         }
+                    }
 
-                        // HISTORIAL DE ÓRDENES FINALIZADAS
-                        item {
-                            Text(
-                                text = stringResource(R.string.gerencia_historial_titulo),
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = estadoUi.textoBusqueda,
-                                onValueChange = onBuscarCambio,
-                                placeholder = { Text(stringResource(R.string.gerencia_buscar_placeholder)) },
-                                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                                trailingIcon = {
-                                    if (estadoUi.textoBusqueda.isNotEmpty()) {
-                                        IconButton(onClick = { onBuscarCambio("") }) {
-                                            Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.btn_limpiar))
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                shape = RoundedCornerShape(12.dp)
-                            )
+                    val tarjetaHistorialFinalizada: @Composable (WorkOrderWithDetails) -> Unit = { item ->
+                        val fechaStr = remember(item.order.deliveredAt, activeLocale) {
+                            val fechaEpoch = item.order.deliveredAt ?: item.order.completedAt ?: item.order.createdAt
+                            LocalDateTime.ofInstant(Instant.ofEpochMilli(fechaEpoch), ZoneId.systemDefault()).format(dateFormatter)
                         }
+                        val seleccionada = adaptive.isDualPane && estadoUi.ordenSeleccionadaDetalle?.order?.id == item.order.id
 
-                        // ESTADO VACÍO O LISTA DE ÓRDENES
-                        if (estadoUi.ordenesFiltradas.isEmpty()) {
-                            item {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                                    shape = RoundedCornerShape(16.dp)
+                        Card(
+                            onClick = { onAbrirDetalleOrden(item) },
+                            modifier = Modifier.fillMaxWidth(),
+                            border = if (seleccionada) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            shape = RoundedCornerShape(14.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    Text(item.order.folio, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = MaterialTheme.colorScheme.primary)
+                                    Text(fechaStr, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    MotoThumbnail(
+                                        photoUrl = item.motorcycle.photoUrl,
+                                        size = 52.dp,
+                                        cornerRadius = 8.dp
+                                    )
                                     Column(
-                                        modifier = Modifier.fillMaxWidth().padding(32.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
-                                        Icon(Icons.Filled.AssignmentTurnedIn, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(52.dp))
-                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            Icon(Icons.Filled.Person, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
+                                            Text(item.client.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                        }
+                                        val placa = item.motorcycle.plate?.let { " ($it)" } ?: ""
                                         Text(
-                                            text = if (estadoUi.textoBusqueda.isNotEmpty())
-                                                stringResource(R.string.gerencia_vacio_busqueda, estadoUi.textoBusqueda)
-                                            else
-                                                stringResource(R.string.gerencia_vacio_titulo),
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 15.sp
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = stringResource(R.string.gerencia_vacio_sugerencia),
-                                            fontSize = 12.sp,
+                                            text = "${item.motorcycle.brand} ${item.motorcycle.model}$placa • ${item.motorcycle.color}",
+                                            fontSize = 13.sp,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
-                                        if (estadoUi.textoBusqueda.isEmpty()) {
-                                            Spacer(modifier = Modifier.height(16.dp))
-                                            Button(
-                                                onClick = onCargarDemo,
-                                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                                            ) {
-                                                Icon(Icons.Filled.CloudDownload, contentDescription = null)
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text(stringResource(R.string.gerencia_btn_cargar_demo), fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    val servEnum = runCatching { ServiceType.valueOf(item.order.serviceType) }.getOrNull()
+                                    val servLabel = servEnum?.let { stringResource(it.getLabelRes()) } ?: item.order.serviceType
+                                    Text(servLabel, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        text = currencyFormatter.format(item.order.totalAmount),
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    val tarjetaHistorialVacio: @Composable () -> Unit = {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(Icons.Filled.AssignmentTurnedIn, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(52.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = if (estadoUi.textoBusqueda.isNotEmpty())
+                                        stringResource(R.string.gerencia_vacio_busqueda, estadoUi.textoBusqueda)
+                                    else
+                                        stringResource(R.string.gerencia_vacio_titulo),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = stringResource(R.string.gerencia_vacio_sugerencia),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (estadoUi.textoBusqueda.isEmpty()) {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Button(
+                                        onClick = onCargarDemo,
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                                    ) {
+                                        Icon(Icons.Filled.CloudDownload, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(stringResource(R.string.gerencia_btn_cargar_demo), fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (adaptive.isDualPane) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(0.46f)
+                                    .fillMaxHeight()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(vertical = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                bloqueMetricas()
+                            }
+
+                            VerticalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+                            Column(
+                                modifier = Modifier
+                                    .weight(0.54f)
+                                    .fillMaxHeight()
+                                    .padding(top = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                val detalleActual = estadoUi.ordenSeleccionadaDetalle
+                                if (estadoUi.mostrarModalDetalleOrden && detalleActual != null) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surface,
+                                        shape = RoundedCornerShape(16.dp),
+                                        tonalElevation = 1.dp,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(bottom = 16.dp)
+                                    ) {
+                                        ContenidoDetalleOrdenGerencia(
+                                            ordenDetalle = detalleActual,
+                                            currencyFormatter = currencyFormatter,
+                                            onVerHistorialMoto = { onVerHistorialMoto(detalleActual.motorcycle.id) },
+                                            onCerrar = onCerrarDetalleOrden,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(16.dp)
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        text = stringResource(R.string.gerencia_historial_titulo),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                    OutlinedTextField(
+                                        value = estadoUi.textoBusqueda,
+                                        onValueChange = onBuscarCambio,
+                                        placeholder = { Text(stringResource(R.string.gerencia_buscar_placeholder)) },
+                                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                                        trailingIcon = {
+                                            if (estadoUi.textoBusqueda.isNotEmpty()) {
+                                                IconButton(onClick = { onBuscarCambio("") }) {
+                                                    Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.btn_limpiar))
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    if (estadoUi.ordenesFiltradas.isEmpty()) {
+                                        tarjetaHistorialVacio()
+                                    } else {
+                                        LazyColumn(
+                                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                                            contentPadding = PaddingValues(bottom = 24.dp),
+                                            modifier = Modifier.fillMaxSize()
+                                        ) {
+                                            items(estadoUi.ordenesFiltradas, key = { it.order.id }) { item ->
+                                                tarjetaHistorialFinalizada(item)
                                             }
                                         }
                                     }
                                 }
                             }
-                        } else {
-                            items(estadoUi.ordenesFiltradas, key = { it.order.id }) { item ->
-                                val fechaStr = remember(item.order.deliveredAt) {
-                                    val fechaEpoch = item.order.deliveredAt ?: item.order.completedAt ?: item.order.createdAt
-                                    LocalDateTime.ofInstant(Instant.ofEpochMilli(fechaEpoch), ZoneId.systemDefault()).format(dateFormatter)
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            contentPadding = PaddingValues(vertical = 16.dp)
+                        ) {
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    bloqueMetricas()
                                 }
+                            }
 
-                                Card(
-                                    onClick = { onAbrirDetalleOrden(item) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                    shape = RoundedCornerShape(14.dp),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                                ) {
-                                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(item.order.folio, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = MaterialTheme.colorScheme.primary)
-                                            Text(fechaStr, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        }
-
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                        ) {
-                                            MotoThumbnail(
-                                                photoUrl = item.motorcycle.photoUrl,
-                                                size = 52.dp,
-                                                cornerRadius = 8.dp
-                                            )
-                                            Column(
-                                                modifier = Modifier.weight(1f),
-                                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                                            ) {
-                                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                                    Icon(Icons.Filled.Person, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
-                                                    Text(item.client.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                                                }
-                                                val placa = item.motorcycle.plate?.let { " ($it)" } ?: ""
-                                                Text(
-                                                    text = "${item.motorcycle.brand} ${item.motorcycle.model}$placa • ${item.motorcycle.color}",
-                                                    fontSize = 13.sp,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
+                            // HISTORIAL DE ÓRDENES FINALIZADAS
+                            item {
+                                Text(
+                                    text = stringResource(R.string.gerencia_historial_titulo),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = estadoUi.textoBusqueda,
+                                    onValueChange = onBuscarCambio,
+                                    placeholder = { Text(stringResource(R.string.gerencia_buscar_placeholder)) },
+                                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                                    trailingIcon = {
+                                        if (estadoUi.textoBusqueda.isNotEmpty()) {
+                                            IconButton(onClick = { onBuscarCambio("") }) {
+                                                Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.btn_limpiar))
                                             }
                                         }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                            }
 
-                                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            val servEnum = runCatching { ServiceType.valueOf(item.order.serviceType) }.getOrNull()
-                                            val servLabel = servEnum?.let { stringResource(it.getLabelRes()) } ?: item.order.serviceType
-                                            Text(servLabel, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            Text(
-                                                text = currencyFormatter.format(item.order.totalAmount),
-                                                fontWeight = FontWeight.ExtraBold,
-                                                fontSize = 16.sp,
-                                                color = MaterialTheme.colorScheme.primary
-                                            )
-                                        }
-                                    }
+                            // ESTADO VACÍO O LISTA DE ÓRDENES
+                            if (estadoUi.ordenesFiltradas.isEmpty()) {
+                                item { tarjetaHistorialVacio() }
+                            } else {
+                                items(estadoUi.ordenesFiltradas, key = { it.order.id }) { item ->
+                                    tarjetaHistorialFinalizada(item)
                                 }
                             }
                         }
                     }
                 } else {
                     // TAB 1: DIRECTORIO E HISTORIAL COMPLETO
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp)
-                    ) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = estadoUi.textoBusquedaDirectorio,
-                            onValueChange = onBuscarDirectorioCambio,
-                            placeholder = { Text(stringResource(R.string.gerencia_directorio_buscar)) },
-                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                    val listaDirectorio: @Composable (Modifier) -> Unit = { panelModifier ->
+                        Column(modifier = panelModifier) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(
+                                value = estadoUi.textoBusquedaDirectorio,
+                                onValueChange = onBuscarDirectorioCambio,
+                                placeholder = { Text(stringResource(R.string.gerencia_directorio_buscar)) },
+                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
 
-                        if (estadoUi.ordenesDirectorioFiltradas.isEmpty()) {
-                            Box(
-                                modifier = Modifier.fillMaxSize().padding(24.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.gerencia_directorio_vacio),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        } else {
-                            LazyColumn(
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                                contentPadding = PaddingValues(bottom = 24.dp)
-                            ) {
-                                items(estadoUi.ordenesDirectorioFiltradas, key = { it.order.id }) { ordenDetalle ->
-                                    Card(
-                                        onClick = { onAbrirDetalleOrden(ordenDetalle) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                        shape = RoundedCornerShape(12.dp)
-                                    ) {
-                                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text(ordenDetalle.order.folio, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                                Badge { Text(localizedOrderStatus(ordenDetalle.order.status)) }
-                                            }
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                            ) {
-                                                MotoThumbnail(
-                                                    photoUrl = ordenDetalle.motorcycle.photoUrl,
-                                                    size = 52.dp,
-                                                    cornerRadius = 8.dp
-                                                )
-                                                Column(
-                                                    modifier = Modifier.weight(1f),
-                                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                            if (estadoUi.ordenesDirectorioFiltradas.isEmpty()) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.gerencia_directorio_vacio),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            } else {
+                                LazyColumn(
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                    contentPadding = PaddingValues(bottom = 24.dp)
+                                ) {
+                                    items(estadoUi.ordenesDirectorioFiltradas, key = { it.order.id }) { ordenDetalle ->
+                                        val seleccionada = adaptive.isDualPane && estadoUi.ordenSeleccionadaDetalle?.order?.id == ordenDetalle.order.id
+                                        Card(
+                                            onClick = { onAbrirDetalleOrden(ordenDetalle) },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            border = if (seleccionada) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                            shape = RoundedCornerShape(12.dp)
+                                        ) {
+                                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(ordenDetalle.order.folio, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                                    Badge { Text(localizedOrderStatus(ordenDetalle.order.status)) }
+                                                }
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                                ) {
+                                                    MotoThumbnail(
+                                                        photoUrl = ordenDetalle.motorcycle.photoUrl,
+                                                        size = 52.dp,
+                                                        cornerRadius = 8.dp
+                                                    )
+                                                    Column(
+                                                        modifier = Modifier.weight(1f),
+                                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = "${ordenDetalle.client.name} • ${stringResource(R.string.label_telefono_corto, ordenDetalle.client.phone)}",
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            fontWeight = FontWeight.SemiBold
+                                                        )
+                                                        Text(
+                                                            text = stringResource(
+                                                                R.string.label_moto_con_color,
+                                                                ordenDetalle.motorcycle.brand,
+                                                                ordenDetalle.motorcycle.model,
+                                                                ordenDetalle.motorcycle.color
+                                                            ),
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                }
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
                                                 ) {
                                                     Text(
-                                                        text = "${ordenDetalle.client.name} • ${stringResource(R.string.label_telefono_corto, ordenDetalle.client.phone)}",
-                                                        style = MaterialTheme.typography.bodyMedium,
-                                                        fontWeight = FontWeight.SemiBold
+                                                        text = stringResource(R.string.label_cobro, currencyFormatter.format(ordenDetalle.order.totalAmount)),
+                                                        fontWeight = FontWeight.Bold
                                                     )
-                                                    Text(
-                                                        text = stringResource(
-                                                            R.string.label_moto_con_color,
-                                                            ordenDetalle.motorcycle.brand,
-                                                            ordenDetalle.motorcycle.model,
-                                                            ordenDetalle.motorcycle.color
-                                                        ),
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                    )
-                                                }
-                                            }
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text(
-                                                    text = stringResource(R.string.label_cobro, currencyFormatter.format(ordenDetalle.order.totalAmount)),
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                                TextButton(onClick = { onVerHistorialMoto(ordenDetalle.motorcycle.id) }) {
-                                                    Text(stringResource(R.string.recepcion_btn_ver_historial), fontSize = 12.sp)
+                                                    TextButton(onClick = { onVerHistorialMoto(ordenDetalle.motorcycle.id) }) {
+                                                        Text(stringResource(R.string.recepcion_btn_ver_historial), fontSize = 12.sp)
+                                                    }
                                                 }
                                             }
                                         }
@@ -700,83 +838,79 @@ fun PantallaGerencia(
                             }
                         }
                     }
+
+                    if (adaptive.isDualPane) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            listaDirectorio(Modifier.weight(0.46f).fillMaxHeight())
+                            VerticalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                            Box(
+                                modifier = Modifier
+                                    .weight(0.54f)
+                                    .fillMaxHeight()
+                                    .padding(vertical = 12.dp)
+                            ) {
+                                val detalleActual = estadoUi.ordenSeleccionadaDetalle
+                                if (detalleActual != null) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surface,
+                                        shape = RoundedCornerShape(16.dp),
+                                        tonalElevation = 1.dp,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        ContenidoDetalleOrdenGerencia(
+                                            ordenDetalle = detalleActual,
+                                            currencyFormatter = currencyFormatter,
+                                            onVerHistorialMoto = { onVerHistorialMoto(detalleActual.motorcycle.id) },
+                                            onCerrar = onCerrarDetalleOrden,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(16.dp)
+                                        )
+                                    }
+                                } else {
+                                    AdaptiveEmptyDetailPane(
+                                        icon = Icons.AutoMirrored.Filled.ReceiptLong,
+                                        title = stringResource(R.string.gerencia_panel_detalle_vacio_titulo),
+                                        subtitle = stringResource(R.string.gerencia_panel_detalle_vacio_subtitulo)
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        listaDirectorio(
+                            Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp)
+                        )
+                    }
                 }
             }
         }
 
-        // MODAL DE DETALLE DE ORDEN
-        if (estadoUi.mostrarModalDetalleOrden && estadoUi.ordenSeleccionadaDetalle != null) {
+        // MODAL DE DETALLE DE ORDEN (en Compact; en Medium/Expanded se muestra integrado en el panel derecho)
+        if (!adaptive.isDualPane && estadoUi.mostrarModalDetalleOrden && estadoUi.ordenSeleccionadaDetalle != null) {
             val orden = estadoUi.ordenSeleccionadaDetalle.order
-            val cliente = estadoUi.ordenSeleccionadaDetalle.client
             val moto = estadoUi.ordenSeleccionadaDetalle.motorcycle
-            val workItems = estadoUi.ordenSeleccionadaDetalle.workItems
-            val spareParts = estadoUi.ordenSeleccionadaDetalle.spareParts
 
             AlertDialog(
                 onDismissRequest = onCerrarDetalleOrden,
                 icon = { Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp)) },
                 title = { Text(stringResource(R.string.gerencia_dialog_detalle_titulo, orden.folio), fontWeight = FontWeight.Bold) },
                 text = {
-                    Column(modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(stringResource(R.string.label_cliente, cliente.name), fontWeight = FontWeight.Bold)
-                        Text("${stringResource(R.string.label_telefono_valor, cliente.phone)} • ${cliente.address ?: stringResource(R.string.entregas_sin_direccion)}")
-                        HorizontalDivider()
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            MotoThumbnail(
-                                photoUrl = moto.photoUrl,
-                                size = 56.dp,
-                                cornerRadius = 8.dp
-                            )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(stringResource(R.string.label_vehiculo, moto.brand, moto.model, moto.color), fontWeight = FontWeight.Bold)
-                                moto.plate?.let { Text(stringResource(R.string.label_placa, it), style = MaterialTheme.typography.bodySmall) }
-                                moto.vin?.let { Text(stringResource(R.string.label_vin, it), style = MaterialTheme.typography.bodySmall) }
-                            }
-                        }
-                        HorizontalDivider()
-                        Text(stringResource(R.string.gerencia_detalle_mano_obra), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                        if (workItems.isEmpty()) {
-                            Text(stringResource(R.string.gerencia_detalle_total_mo, currencyFormatter.format(orden.totalLaborCost)), style = MaterialTheme.typography.bodySmall)
-                        } else {
-                            workItems.forEach { item ->
-                                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                    Text("• ${item.description}", style = MaterialTheme.typography.bodySmall)
-                                    Text(currencyFormatter.format(item.cost), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
-                                }
-                            }
-                        }
-                        Text(stringResource(R.string.gerencia_detalle_refacciones), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                        if (spareParts.isEmpty()) {
-                            Text(stringResource(R.string.gerencia_detalle_total_refacciones, currencyFormatter.format(orden.totalPartsCost)), style = MaterialTheme.typography.bodySmall)
-                        } else {
-                            spareParts.forEach { part ->
-                                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                    Text("• ${part.partName}", style = MaterialTheme.typography.bodySmall)
-                                    Text(currencyFormatter.format(part.cost), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
-                                }
-                            }
-                        }
-                        if (orden.deliveryCost > 0.0) {
-                            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                Text(stringResource(R.string.gerencia_detalle_envio), fontWeight = FontWeight.Bold)
-                                Text(currencyFormatter.format(orden.deliveryCost), fontWeight = FontWeight.Bold)
-                            }
-                        }
-                        HorizontalDivider()
-                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                            Text(stringResource(R.string.gerencia_detalle_total_facturado), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-                            Text(currencyFormatter.format(orden.totalAmount), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
-                        }
-                        orden.recommendations?.let {
-                            Spacer(Modifier.height(4.dp))
-                            Text(stringResource(R.string.gerencia_detalle_recomendaciones), fontWeight = FontWeight.Bold)
-                            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
+                    ContenidoDetalleOrdenGerencia(
+                        ordenDetalle = estadoUi.ordenSeleccionadaDetalle,
+                        currencyFormatter = currencyFormatter,
+                        onVerHistorialMoto = null,
+                        onCerrar = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 420.dp)
+                    )
                 },
                 confirmButton = {
                     Button(onClick = onCerrarDetalleOrden) {
@@ -832,6 +966,115 @@ fun PantallaGerencia(
                     }
                 }
             )
+        }
+    }
+}
+
+@Composable
+fun ContenidoDetalleOrdenGerencia(
+    ordenDetalle: WorkOrderWithDetails,
+    currencyFormatter: NumberFormat,
+    onVerHistorialMoto: (() -> Unit)?,
+    onCerrar: (() -> Unit)?,
+    modifier: Modifier = Modifier
+) {
+    val orden = ordenDetalle.order
+    val cliente = ordenDetalle.client
+    val moto = ordenDetalle.motorcycle
+    val workItems = ordenDetalle.workItems
+    val spareParts = ordenDetalle.spareParts
+
+    Column(
+        modifier = modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (onCerrar != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.gerencia_dialog_detalle_titulo, orden.folio),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onCerrar) {
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.btn_cerrar))
+                }
+            }
+            HorizontalDivider()
+        }
+        Text(stringResource(R.string.label_cliente, cliente.name), fontWeight = FontWeight.Bold)
+        Text("${stringResource(R.string.label_telefono_valor, cliente.phone)} • ${cliente.address ?: stringResource(R.string.entregas_sin_direccion)}")
+        HorizontalDivider()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            MotoThumbnail(
+                photoUrl = moto.photoUrl,
+                size = 56.dp,
+                cornerRadius = 8.dp
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.label_vehiculo, moto.brand, moto.model, moto.color), fontWeight = FontWeight.Bold)
+                moto.plate?.let { Text(stringResource(R.string.label_placa, it), style = MaterialTheme.typography.bodySmall) }
+                moto.vin?.let { Text(stringResource(R.string.label_vin, it), style = MaterialTheme.typography.bodySmall) }
+            }
+        }
+        HorizontalDivider()
+        Text(stringResource(R.string.gerencia_detalle_mano_obra), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        if (workItems.isEmpty()) {
+            Text(stringResource(R.string.gerencia_detalle_total_mo, currencyFormatter.format(orden.totalLaborCost)), style = MaterialTheme.typography.bodySmall)
+        } else {
+            workItems.forEach { item ->
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                    Text("• ${item.description}", style = MaterialTheme.typography.bodySmall)
+                    Text(currencyFormatter.format(item.cost), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+        Text(stringResource(R.string.gerencia_detalle_refacciones), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        if (spareParts.isEmpty()) {
+            Text(stringResource(R.string.gerencia_detalle_total_refacciones, currencyFormatter.format(orden.totalPartsCost)), style = MaterialTheme.typography.bodySmall)
+        } else {
+            spareParts.forEach { part ->
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                    Text("• ${part.partName}", style = MaterialTheme.typography.bodySmall)
+                    Text(currencyFormatter.format(part.cost), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+        if (orden.deliveryCost > 0.0) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                Text(stringResource(R.string.gerencia_detalle_envio), fontWeight = FontWeight.Bold)
+                Text(currencyFormatter.format(orden.deliveryCost), fontWeight = FontWeight.Bold)
+            }
+        }
+        HorizontalDivider()
+        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+            Text(stringResource(R.string.gerencia_detalle_total_facturado), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+            Text(currencyFormatter.format(orden.totalAmount), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+        }
+        orden.recommendations?.let {
+            Spacer(Modifier.height(4.dp))
+            Text(stringResource(R.string.gerencia_detalle_recomendaciones), fontWeight = FontWeight.Bold)
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (onVerHistorialMoto != null) {
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = onVerHistorialMoto,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.recepcion_btn_ver_historial))
+            }
         }
     }
 }

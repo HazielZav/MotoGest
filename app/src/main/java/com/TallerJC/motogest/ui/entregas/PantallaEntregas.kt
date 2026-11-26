@@ -2,16 +2,21 @@ package com.TallerJC.motogest.ui.entregas
 
 import android.content.res.Configuration
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -31,6 +36,9 @@ import com.TallerJC.motogest.domain.model.enums.DeliveryType
 import com.TallerJC.motogest.domain.model.enums.OrderStatus
 import com.TallerJC.motogest.domain.model.enums.ServiceType
 import com.TallerJC.motogest.ui.components.MotoThumbnail
+import com.TallerJC.motogest.ui.util.AdaptiveEmptyDetailPane
+import com.TallerJC.motogest.ui.util.LocalAdaptiveState
+import com.TallerJC.motogest.ui.util.MotoGestTopBar
 import com.TallerJC.motogest.ui.util.getLabelRes
 import com.TallerJC.motogest.ui.util.rememberCurrencyFormatter
 import java.text.NumberFormat
@@ -84,14 +92,19 @@ fun PantallaEntregasContenido(
     onNavegarEnMaps: () -> Unit
 ) {
     val formatoMoneda = rememberCurrencyFormatter()
+    val adaptive = LocalAdaptiveState.current
+    var ordenPanelSeleccionadaId by rememberSaveable { mutableStateOf<String?>(null) }
+    val ordenPanelSeleccionada = remember(estadoUi.ordenesParaEntrega, ordenPanelSeleccionadaId) {
+        estadoUi.ordenesParaEntrega.firstOrNull { it.order.id == ordenPanelSeleccionadaId }
+            ?: estadoUi.ordenesParaEntrega.firstOrNull()
+    }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.entregas_titulo), fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+            MotoGestTopBar(
+                title = stringResource(R.string.entregas_titulo),
+                showBottomDivider = true
             )
         }
     ) { paddingValues ->
@@ -164,16 +177,17 @@ fun PantallaEntregasContenido(
             }
 
             // Chips de filtrado rápido
+            val alturaChip = if (adaptive.isCompactHeight) 36.dp else 48.dp
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(vertical = 8.dp)
+                modifier = Modifier.padding(vertical = if (adaptive.isCompactHeight) 4.dp else 8.dp)
             ) {
                 item {
                     FilterChip(
                         selected = estadoUi.filtroEstado == null,
                         onClick = { onFiltroCambio(null) },
                         label = { Text(stringResource(R.string.entregas_filtro_todas, estadoUi.ordenesParaEntrega.size)) },
-                        modifier = Modifier.height(48.dp)
+                        modifier = Modifier.height(alturaChip)
                     )
                 }
                 items(estadosDisponibles) { estado ->
@@ -181,7 +195,7 @@ fun PantallaEntregasContenido(
                         selected = estadoUi.filtroEstado == estado,
                         onClick = { onFiltroCambio(estado) },
                         label = { Text(stringResource(estado.getLabelRes(plural = true))) },
-                        modifier = Modifier.height(48.dp)
+                        modifier = Modifier.height(alturaChip)
                     )
                 }
             }
@@ -215,6 +229,64 @@ fun PantallaEntregasContenido(
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                }
+            } else if (adaptive.isDualPane) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(0.45f)
+                            .fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(bottom = 24.dp)
+                    ) {
+                        items(
+                            items = estadoUi.ordenesParaEntrega,
+                            key = { it.order.id }
+                        ) { ordenDetalle ->
+                            val seleccionada = ordenPanelSeleccionada?.order?.id == ordenDetalle.order.id
+                            TarjetaOrdenEntregaResumen(
+                                ordenDetalle = ordenDetalle,
+                                formatoMoneda = formatoMoneda,
+                                isSelected = seleccionada,
+                                onClick = { ordenPanelSeleccionadaId = ordenDetalle.order.id }
+                            )
+                        }
+                    }
+
+                    VerticalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+                    Box(
+                        modifier = Modifier
+                            .weight(0.55f)
+                            .fillMaxHeight()
+                    ) {
+                        if (ordenPanelSeleccionada != null) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                TarjetaOrdenEntrega(
+                                    ordenDetalle = ordenPanelSeleccionada,
+                                    formatoMoneda = formatoMoneda,
+                                    onMarcarEnCamino = { onMarcarEnCamino(ordenPanelSeleccionada) },
+                                    onSolicitarEntrega = { onSolicitarEntrega(ordenPanelSeleccionada) },
+                                    onAbrirEdicionCosto = { onAbrirEdicionCosto(ordenPanelSeleccionada) },
+                                    onNavegarEnMaps = onNavegarEnMaps
+                                )
+                                Spacer(modifier = Modifier.height(24.dp))
+                            }
+                        } else {
+                            AdaptiveEmptyDetailPane(
+                                icon = Icons.AutoMirrored.Filled.DirectionsBike,
+                                title = stringResource(R.string.entregas_panel_detalle_vacio_titulo),
+                                subtitle = stringResource(R.string.entregas_panel_detalle_vacio_subtitulo)
+                            )
+                        }
                     }
                 }
             } else {
@@ -412,6 +484,91 @@ fun PantallaEntregasContenido(
                     }
                 }
             )
+        }
+    }
+}
+
+@Composable
+fun TarjetaOrdenEntregaResumen(
+    ordenDetalle: WorkOrderWithDetails,
+    formatoMoneda: NumberFormat,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val orden = ordenDetalle.order
+    val moto = ordenDetalle.motorcycle
+    val cliente = ordenDetalle.client
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = orden.folio,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Badge(
+                    containerColor = if (orden.status == OrderStatus.EN_CAMINO.name) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.secondary
+                    }
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (orden.status == OrderStatus.EN_CAMINO.name) R.string.status_en_camino else R.string.status_lista_entrega
+                        ).uppercase(),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp
+                    )
+                }
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                MotoThumbnail(photoUrl = moto.photoUrl, size = 48.dp, cornerRadius = 8.dp)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "${moto.brand} ${moto.model} (${moto.color})",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = cliente.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = formatoMoneda.format(orden.totalAmount),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }
